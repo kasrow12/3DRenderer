@@ -70,6 +70,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)/includes;$(ProjectDir)/includes/glfw/include;$(ProjectDir)/includes/glad/include</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -127,14 +130,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="glad\src\glad.c" />
+    <ClCompile Include="includes\glad\src\glad.c" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="glad\include\glad\glad.h" />
-    <ClInclude Include="glad\include\KHR\khrplatform.h" />
-    <ClInclude Include="glfw\include\GLFW\glfw3.h" />
-    <ClInclude Include="glfw\include\GLFW\glfw3native.h" />
+    <ClInclude Include="Objects\Camera.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="glfw3.lib" />
