@@ -66,7 +66,7 @@ int main()
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    Shader shader("shaders/vertex.vs", "shaders/fragment.fs");
+    Shader shader("vertex.vs", "fragment.fs");
 
     //float vertices[] = {
     //     0.5f,  0.0f,  0.5f,  // top right
