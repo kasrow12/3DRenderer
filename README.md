@@ -1,5 +1,5 @@
 
-`git clone https://github.com/kasrow12/3DRenderer.git`
+`git clone --recursive https://github.com/kasrow12/3DRenderer.git`
 
 `cd 3DRenderer`
 
