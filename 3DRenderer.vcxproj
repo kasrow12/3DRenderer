@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)/includes;$(ProjectDir)/includes/glfw/include;$(ProjectDir)/includes/glad/include;$(ProjectDir)/includes/imgui;$(ProjectDir)/includes/glm/</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)/includes;$(ProjectDir)/includes/glfw/include;$(ProjectDir)/includes/glad/include;$(ProjectDir)/includes/imgui;$(ProjectDir)/includes/glm/;$(ProjectDir)/includes/assimp/include;</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -141,15 +141,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Objects\Camera.h" />
-    <ClInclude Include="Shader.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="glfw3.lib" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Shaders\*.fs" />
-    <None Include="Shaders\*.vs" />
+    <Library Include="includes\glfw\include\glfw3.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

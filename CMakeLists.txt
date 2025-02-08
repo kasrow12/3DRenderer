@@ -17,6 +17,7 @@ add_executable(My3DRenderer
     includes/imgui/imgui_draw.cpp
     includes/imgui/imgui_tables.cpp
     includes/imgui/imgui_widgets.cpp
+    includes/stb_image/stb_image.cpp
     main.cpp
 )
 
@@ -25,16 +26,23 @@ target_include_directories(My3DRenderer PRIVATE
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/includes/glfw/include
     ${CMAKE_SOURCE_DIR}/includes/glad/include
+    ${CMAKE_SOURCE_DIR}/includes/assimp/include
     ${CMAKE_SOURCE_DIR}/includes/imgui
     ${CMAKE_SOURCE_DIR}/includes/glm
+    ${CMAKE_SOURCE_DIR}/includes/stb_image
 )
 
-# Link external libraries
+# Link libraries
+add_subdirectory(includes/assimp)
+
 set(LIBS glfw3)
 target_link_libraries(My3DRenderer PRIVATE ${LIBS})
 
 set(GLFW_LIB_PATH ${CMAKE_SOURCE_DIR}/includes/glfw/include)
 target_link_directories(My3DRenderer PRIVATE ${GLFW_LIB_PATH})
+
+target_include_directories(My3DRenderer PRIVATE ${CMAKE_SOURCE_DIR}/includes/assimp)
+target_link_libraries(My3DRenderer PRIVATE assimp)
 
 # Platform-specific settings
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -49,14 +57,7 @@ if (MSVC)
     target_compile_options(My3DRenderer PRIVATE /W3 /permissive- /utf-8)
 endif()
 
-
-# Copy shaders to the output directory
-file(GLOB SHADERS "${CMAKE_SOURCE_DIR}/Shaders/*.fs" "${CMAKE_SOURCE_DIR}/Shaders/*.vs")
-
-foreach(SHADER ${SHADERS})
-    get_filename_component(SHADER_NAME ${SHADER} NAME)
-    add_custom_command(TARGET My3DRenderer POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${SHADER} $<TARGET_FILE_DIR:My3DRenderer>/${SHADER_NAME}
-    )
-endforeach()
+add_custom_command(TARGET My3DRenderer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/Assets $<TARGET_FILE_DIR:My3DRenderer>/Assets
+)

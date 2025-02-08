@@ -1,18 +1,20 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_glfw.h>
 #include <imgui/backends/imgui_impl_opengl3.h>
 
+#include <stb_image/stb_image.h>
 #include <iostream>
 
-#include "Objects/Camera.h"
-#include "Shader.h"
-
-#define WIRE_FRAME 0
+#include "Source/Model.h"
+#include "Source/Camera.h"
+#include "Source/Shader.h"
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 void mouseCallback(GLFWwindow* window, double xpos, double ypos);
@@ -21,13 +23,12 @@ void processInput(GLFWwindow* window);
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void updateWireFrame();
 
-unsigned int screenWidth = 1400;
-unsigned int screenHeight = 900;
+int screenWidth = 1400;
+int screenHeight = 900;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 30.0f));
 
 float deltaTime = 0.0f;
-float lastFrame = 0.0f;
 
 bool wireFrame = false;
 bool captureMouse = false;
@@ -48,7 +49,7 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
-	glfwSetCursorPos(window, screenWidth / 2, screenHeight / 2);
+	glfwSetCursorPos(window, (float)screenWidth / 2, (float)screenHeight / 2);
 	glfwSetCursorPosCallback(window, mouseCallback);
 	glfwSetScrollCallback(window, scrollCallback);
 	glfwSetKeyCallback(window, keyCallback);
@@ -66,90 +67,18 @@ int main()
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    Shader shader("vertex.vs", "fragment.fs");
+    stbi_set_flip_vertically_on_load(true);
 
-    //float vertices[] = {
-    //     0.5f,  0.0f,  0.5f,  // top right
-    //     0.5f,  0.0f, -0.5f,  // bottom right
-    //    -0.5f,  0.0f, -0.5f,  // bottom left
-    //    -0.5f,  0.0f,  0.5f   // top left 
-    //};
-    float vertices[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+    Shader shader("Assets/Shaders/vertex.vs", "Assets/Shaders/fragment.fs");
 
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+	Model ourModel("Assets/Objects/backpack/backpack.obj");
 
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-    };
-    unsigned int indices[] = {  // note that we start from 0!
-        0, 1, 3,  // first Triangle
-        1, 2, 3   // second Triangle
-    };
-    unsigned int VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glBindVertexArray(0);
     glEnable(GL_DEPTH_TEST);
-
-#if WIRE_FRAME
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-#endif
 
     while (!glfwWindowShouldClose(window))
     {
-		float currentFrame = glfwGetTime();
-		deltaTime = currentFrame - deltaTime;
-		lastFrame = currentFrame;
+		double currentFrame = glfwGetTime();
+		deltaTime = (float)currentFrame - deltaTime;
 
         processInput(window);
 
@@ -164,13 +93,9 @@ int main()
 		glm::mat4 view = camera.getViewMatrix();
 		shader.setMat4("view", view);
 
-		shader.setMat4("model", glm::scale(glm::mat4(1.0f), glm::vec3(10.0f, 10.0f, 10.0f)));
+		shader.setMat4("model", glm::scale(glm::mat4(1.0f), glm::vec3(1, 1, 1)));
 
-        //glUniform4f(vertexColorLocation, greenValue, greenValue, 0.0f, 1.0f);
-
-        glBindVertexArray(VAO);
-        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        ourModel.Draw(shader);
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -183,10 +108,11 @@ int main()
 		ImGui::Text("Left Shift - Move Down");
 		ImGui::Text("Control - Capture Mouse");
 		ImGui::Text("Scroll - Zoom");
-        if (ImGui::Checkbox("Wireframe", &wireFrame))
+        if (ImGui::Checkbox("Wireframe (F)", &wireFrame))
         {
             updateWireFrame();
         }
+		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 
         ImGui::End();
 
@@ -196,10 +122,6 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-    
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
     
     glfwTerminate();
     return 0;
@@ -228,8 +150,8 @@ void processInput(GLFWwindow* window)
 
 void mouseCallback(GLFWwindow* window, double xpos, double ypos)
 {
-    static float lastX = screenWidth / 2;
-    static float lastY = screenHeight / 2;
+    static double lastX = (float)screenWidth / 2;
+    static double lastY = (float)screenHeight / 2;
     static bool firstMouse = true;
 
 	if (!captureMouse)
@@ -245,13 +167,13 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos)
         firstMouse = false;
     }
 
-    float xOffset = xpos - lastX;
-    float yOffset = lastY - ypos;
+    double xOffset = xpos - lastX;
+    double yOffset = lastY - ypos;
 
     lastX = xpos;
     lastY = ypos;
 
-    camera.processMouseMovement(xOffset, yOffset);
+    camera.processMouseMovement((float)xOffset, (float)yOffset);
 }
 
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
@@ -259,7 +181,7 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 	if (!captureMouse)
 		return;
 
-	camera.processMouseScroll(yoffset);
+	camera.processMouseScroll((float)yoffset);
 }
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
