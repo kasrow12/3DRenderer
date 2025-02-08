@@ -4,3 +4,6 @@
 [submodule "includes/imgui"]
 	path = includes/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "includes/glm"]
+	path = includes/glm
+	url = https://github.com/g-truc/glm

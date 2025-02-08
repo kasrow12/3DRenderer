@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)/includes;$(ProjectDir)/includes/glfw/include;$(ProjectDir)/includes/glad/include;$(ProjectDir)/includes/imgui</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)/includes;$(ProjectDir)/includes/glfw/include;$(ProjectDir)/includes/glad/include;$(ProjectDir)/includes/imgui;$(ProjectDir)/includes/glm/</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -131,7 +131,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="includes\glad\src\glad.c" />
-    <ClCompile Include="includes\glm\detail\glm.cpp" />
     <ClCompile Include="includes\imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="includes\imgui\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="includes\imgui\imgui.cpp" />
@@ -140,25 +139,17 @@
     <ClCompile Include="includes\imgui\imgui_tables.cpp" />
     <ClCompile Include="includes\imgui\imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="includes\imgui\backends\imgui_impl_glfw.h" />
-    <ClInclude Include="includes\imgui\backends\imgui_impl_opengl3.h" />
-    <ClInclude Include="includes\imgui\backends\imgui_impl_opengl3_loader.h" />
-    <ClInclude Include="includes\imgui\imgui.h" />
-    <ClInclude Include="includes\imgui\imgui_internal.h" />
-    <ClInclude Include="includes\imgui\imstb_rectpack.h" />
-    <ClInclude Include="includes\imgui\imstb_textedit.h" />
-    <ClInclude Include="includes\imgui\imstb_truetype.h" />
     <ClInclude Include="Objects\Camera.h" />
+    <ClInclude Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="glfw3.lib" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\fragment.fs" />
-    <None Include="Shaders\vertex.vs" />
+    <None Include="Shaders\*.fs" />
+    <None Include="Shaders\*.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
