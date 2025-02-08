@@ -50,6 +50,7 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	glfwSetCursorPos(window, screenWidth / 2, screenHeight / 2);
 	glfwSetCursorPosCallback(window, mouseCallback);
+	glfwSetScrollCallback(window, scrollCallback);
 	glfwSetKeyCallback(window, keyCallback);
     
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -181,6 +182,7 @@ int main()
 		ImGui::Text("Space - Move Up");
 		ImGui::Text("Left Shift - Move Down");
 		ImGui::Text("Control - Capture Mouse");
+		ImGui::Text("Scroll - Zoom");
         if (ImGui::Checkbox("Wireframe", &wireFrame))
         {
             updateWireFrame();
@@ -254,6 +256,9 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos)
 
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
+	if (!captureMouse)
+		return;
+
 	camera.processMouseScroll(yoffset);
 }
 
