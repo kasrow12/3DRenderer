@@ -132,12 +132,17 @@
   <ItemGroup>
     <ClCompile Include="includes\glad\src\glad.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Objects\Camera.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="glfw3.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\fragment.fs" />
+    <None Include="Shaders\vertex.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

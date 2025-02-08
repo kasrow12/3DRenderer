@@ -7,106 +7,22 @@
 #include <iostream>
 
 #include "Objects/Camera.h"
+#include "Shader.h"
 
 #define WIRE_FRAME 0
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void framebufferSizeCallback(GLFWwindow* window, int width, int height);
+void mouseCallback(GLFWwindow* window, double xpos, double ypos);
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 
 unsigned int screenWidth = 1400;
 unsigned int screenHeight = 900;
 
-Camera camera {
-	glm::vec3(0.0f, 0.0f, 3.0f),
-	glm::vec3(0.0f, 0.0f, -1.0f),
-	glm::vec3(0.0f, 1.0f, 0.0f),
-	-90.0f,
-	0.0f,
-	45.0f
-};
+Camera camera(glm::vec3(0.0f, 0.0f, 30.0f));
 
-const char* vertexShaderSource = R"(
-    #version 330 core
-    layout (location = 0) in vec3 aPos;
-
-	uniform mat4 modelMatrix;
-	uniform mat4 viewMatrix;
-	uniform mat4 projMatrix;
-
-	out vec3 worldPos;
-    
-    void main()
-    {
-		worldPos = vec3(modelMatrix * vec4(aPos, 1.0));
-
-		gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(aPos, 1.0);
-    }
-)";
-
-const char* fragmentShaderSource = R"(
-    #version 330 core
-    in vec4 vertexColor;
-
-    uniform vec4 ourColor;
-	out vec4 FragColor;
-
-    void main()
-    {
-        FragColor = ourColor;
-    }
-)";
-
-GLuint compileShader(GLenum type, const char* source)
-{
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, nullptr);
-    glCompileShader(shader);
-
-    int result;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &result);
-    if (!result)
-    {
-        int length;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-        char* message = (char*)alloca(length * sizeof(char));
-        glGetShaderInfoLog(shader, length, &length, message);
-        std::cout << "Failed to compile shader!" << std::endl;
-        std::cout << message << std::endl;
-        glDeleteShader(shader);
-        exit(-1);
-    }
-
-    return shader;
-}
-
-GLuint initializeProgram()
-{
-    GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
-    GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    int result;
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &result);
-    if (!result)
-    {
-        int length;
-        glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &length);
-        char* message = (char*)alloca(length * sizeof(char));
-        glGetProgramInfoLog(shaderProgram, length, &length, message);
-        std::cout << "Failed to link program!" << std::endl;
-        std::cout << message << std::endl;
-        exit(-1);
-    }
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    return shaderProgram;
-}
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
 
 int main()
 {
@@ -123,29 +39,10 @@ int main()
         return -1;
     }
     glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetCursorPos(window, screenWidth / 2, screenHeight / 2);
-	glfwSetCursorPosCallback(window, [](GLFWwindow* window, double xpos, double ypos) {
-		static float lastX = screenWidth / 2;
-		static float lastY = screenHeight / 2;
-		static bool firstMouse = true;
-
-		if (firstMouse)
-		{
-			lastX = xpos;
-			lastY = ypos;
-			firstMouse = false;
-		}
-
-		float xOffset = xpos - lastX;
-		float yOffset = lastY - ypos;
-
-		lastX = xpos;
-		lastY = ypos;
-
-		camera.processMouseMovement(xOffset, yOffset);
-		});
+	glfwSetCursorPosCallback(window, mouseCallback);
     
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -153,13 +50,56 @@ int main()
         return -1;
     }
 
-    GLuint shaderProgram = initializeProgram();
+    Shader shader("shaders/vertex.vs", "shaders/fragment.fs");
 
+    //float vertices[] = {
+    //     0.5f,  0.0f,  0.5f,  // top right
+    //     0.5f,  0.0f, -0.5f,  // bottom right
+    //    -0.5f,  0.0f, -0.5f,  // bottom left
+    //    -0.5f,  0.0f,  0.5f   // top left 
+    //};
     float vertices[] = {
-         0.5f,  0.5f, 0.0f,  // top right
-         0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f   // top left 
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
     unsigned int indices[] = {  // note that we start from 0!
         0, 1, 3,  // first Triangle
@@ -174,15 +114,16 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindVertexArray(0);
+    glEnable(GL_DEPTH_TEST);
 
 #if WIRE_FRAME
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -190,25 +131,31 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+		float currentFrame = glfwGetTime();
+		deltaTime = currentFrame - deltaTime;
+		lastFrame = currentFrame;
+
         processInput(window);
-		camera.processInput(window);
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "modelMatrix"), 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(camera.getViewMatrix()));
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projMatrix"), 1, GL_FALSE, glm::value_ptr(camera.getProjectionMatrix((float)screenWidth / (float)screenHeight)));
+        shader.use();
 
-        glUseProgram(shaderProgram);
-        float timeValue = glfwGetTime();
-        float greenValue = sin(timeValue) / 2.0f + 0.5f;
-        int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
-        glUniform4f(vertexColorLocation, greenValue, greenValue, 0.0f, 1.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
+		shader.setMat4("projection", projection);
+
+		glm::mat4 view = camera.getViewMatrix();
+		shader.setMat4("view", view);
+
+		shader.setMat4("model", glm::scale(glm::mat4(1.0f), glm::vec3(10.0f, 10.0f, 10.0f)));
+
+        //glUniform4f(vertexColorLocation, greenValue, greenValue, 0.0f, 1.0f);
 
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        
+        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -216,7 +163,6 @@ int main()
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);
     
     glfwTerminate();
     return 0;
@@ -226,9 +172,49 @@ void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		camera.processKeyboard(FORWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		camera.processKeyboard(BACKWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		camera.processKeyboard(LEFT, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		camera.processKeyboard(RIGHT, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		camera.processKeyboard(UP, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+		camera.processKeyboard(DOWN, deltaTime);
 }
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void mouseCallback(GLFWwindow* window, double xpos, double ypos)
+{
+    static float lastX = screenWidth / 2;
+    static float lastY = screenHeight / 2;
+    static bool firstMouse = true;
+
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xOffset = xpos - lastX;
+    float yOffset = lastY - ypos;
+
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.processMouseMovement(xOffset, yOffset);
+}
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	camera.processMouseScroll(yoffset);
+}
+
+void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
 	screenWidth = width;
 	screenHeight = height;
