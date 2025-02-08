@@ -61,3 +61,10 @@ add_custom_command(TARGET My3DRenderer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/Assets $<TARGET_FILE_DIR:My3DRenderer>/Assets
 )
+
+# Copy necessary assimp DLL
+add_custom_command(TARGET My3DRenderer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_BINARY_DIR}/includes/assimp/bin/Release/assimp-vc143-mt.dll
+    $<TARGET_FILE_DIR:My3DRenderer>
+)
