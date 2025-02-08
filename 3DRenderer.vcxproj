@@ -143,7 +143,6 @@
     <ClCompile Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="includes\imgui\imconfig.h" />
     <ClInclude Include="includes\imgui\imgui.h" />
     <ClInclude Include="includes\imgui\imgui_impl_glfw.h" />
     <ClInclude Include="includes\imgui\imgui_impl_opengl3.h" />
