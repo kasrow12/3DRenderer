@@ -129,11 +129,10 @@ int main()
 
 void processInput(GLFWwindow* window)
 {
-	static bool wireFrame = false;
-
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
+	// Camera controls
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		camera.processKeyboard(FORWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -199,7 +198,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		updateWireFrame();
 	}
 
-	// Capture mouse on left control
+	// Capture mouse on left control, cannot do this in processInput because this will be called only once
 	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS)
 	{
 		captureMouse = !captureMouse;
@@ -213,11 +212,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 void updateWireFrame()
 {
 	if (wireFrame)
-	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	}
 	else
-	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	}
 }

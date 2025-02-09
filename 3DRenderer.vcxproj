@@ -143,6 +143,9 @@
   <ItemGroup>
     <Library Include="includes\glfw\include\glfw3.lib" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\Light.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -1,6 +1,8 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+// https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/model.h
+
 #include <glad/glad.h> 
 
 #include <glm/glm.hpp>
@@ -20,7 +22,7 @@
 #include <map>
 #include <vector>
 
-unsigned int TextureFromFile(const char *path, const std::string &directory, bool gamma = false);
+unsigned int TextureFromFile(const char *path, const std::string &directory);
 
 class Model 
 {
@@ -29,10 +31,9 @@ public:
     std::vector<Texture> textures_loaded;	// stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
     std::vector<Mesh>    meshes;
     std::string directory;
-    bool gammaCorrection;
 
     // constructor, expects a filepath to a 3D model.
-    Model(std::string const &path, bool gamma = false) : gammaCorrection(gamma)
+    Model(std::string const &path)
     {
         loadModel(path);
     }
@@ -58,7 +59,8 @@ private:
             return;
         }
         // retrieve the directory path of the filepath
-        directory = path.substr(0, path.find_last_of('/'));
+        size_t pos = path.find_last_of('/');
+        directory = (pos == std::string::npos ? "" : path.substr(0, pos) + "/";
 
         // process ASSIMP's root node recursively
         processNode(scene->mRootNode, scene);
@@ -202,7 +204,7 @@ private:
 };
 
 
-unsigned int TextureFromFile(const char *path, const std::string &directory, bool gamma)
+unsigned int TextureFromFile(const char *path, const std::string &directory)
 {
 	std::string filename = std::string(path);
     filename = directory + '/' + filename;

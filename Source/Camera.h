@@ -1,6 +1,8 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+// https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/camera.h
+
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -20,8 +22,8 @@ const float PITCH = 0.0f;
 const float SPEED = 0.0025f;
 const float SENSITIVITY = 0.1f;
 const float ZOOM = 45.0f;
+const float SCROLL_SENSITIVITY = 2.0f;
 
-// https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/camera.h
 // An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices for use in OpenGL
 class Camera
 {
@@ -99,7 +101,7 @@ public:
     // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
     void processMouseScroll(float yoffset)
     {
-        Zoom -= yoffset;
+        Zoom -= yoffset * SCROLL_SENSITIVITY;
         if (Zoom < 1.0f)
             Zoom = 1.0f;
         if (Zoom > 45.0f)
