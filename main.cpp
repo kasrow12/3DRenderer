@@ -26,11 +26,12 @@ void processInput(GLFWwindow* window);
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void updateWireFrame();
 void generateLights();
+void updateSpotlight();
 
 int screenWidth = 1400;
 int screenHeight = 900;
 
-Camera camera(glm::vec3(0.0f, 0.0f, 15.0f));
+Camera camera(glm::vec3(0.0f, 1.0f, 15.0f));
 
 float deltaTime = 0.0f;
 double lastFrame = 0.0;
@@ -40,12 +41,39 @@ bool captureMouse = false;
 bool useBlinn = false;
 
 std::vector<PointLight> pointLights;
-SpotLight spotLight(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), 12.5f, 15.0f, 1.0f, 0.09f, 0.032f, glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(1.0f));
+SpotLight spotLight(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), 12.5f, 15.0f, 1.0f, 0.008f, 0.001f, glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(1.0f));
 DirLight dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f));
 
 glm::vec3 skyColor(0.2f, 0.3f, 0.3f);
 
-float fogDistance = 30.0f;
+float fogDistance = 60.0f;
+glm::vec3 localOffset(-8.2f, 3.9f, 0.0f);
+glm::vec3 spotDirection(-1.0f, -0.25f, 0.0f);
+
+struct GameObject
+{
+    Model* model;
+    glm::vec3 position;
+    glm::vec3 rotation;
+    glm::vec3 scale;
+    std::string name;
+
+    GameObject(Model* model, const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scale, const std::string& name)
+        : model(model), position(pos), rotation(rot), scale(scale), name(name) {}
+
+    glm::mat4 getModelMatrix() const {
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::translate(modelMatrix, position);
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        modelMatrix = glm::scale(modelMatrix, scale);
+        return modelMatrix;
+    }
+};
+
+std::vector<GameObject> gameObjects;
+GameObject* trainObject = nullptr;
 
 int main()
 {
@@ -87,8 +115,23 @@ int main()
 
     Shader shader("Assets/Shaders/vertex.vs", "Assets/Shaders/fragment.fs");
 
-    Model ourModel("Assets/Objects/GEVO/Gevo.obj", false);
-	//Model ourModel("Assets/Objects/backpack/backpack.obj");
+    Model trainModel("Assets/Objects/GEVO/Gevo.obj", false);
+	//Model backpackModel("Assets/Objects/backpack/backpack.obj");
+    Model sphereModel ("Assets/Objects/basics/sphere3.obj");
+    Model floorModel ("Assets/Objects/basics/floor.obj");
+
+    gameObjects.emplace_back(&trainModel, glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f), glm::vec3(1.0f), "Train");
+    //gameObjects.emplace_back(&backpackModel, glm::vec3(0.0f, -2.0f, 0.0f),
+    //    glm::vec3(0.0f), glm::vec3(1.0f), "Backpack");
+    gameObjects.emplace_back(&floorModel, glm::vec3(0.0f),
+        glm::vec3(0.0f), glm::vec3(100, 0.0001f, 100), "Floor");
+
+    gameObjects.emplace_back(&sphereModel, glm::vec3(0.0f),
+        glm::vec3(0.0f), glm::vec3(1), "Sphere");
+
+    trainObject = &gameObjects[0];
+
 
     generateLights();
 
@@ -99,6 +142,7 @@ int main()
 		lastFrame = currentFrame;
 
         processInput(window);
+        updateSpotlight();
 
         glClearColor(skyColor.x, skyColor.y, skyColor.z, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -131,8 +175,11 @@ int main()
 		shader.setFloat("fogDistance", fogDistance);
 		shader.setVec3("skyColor", skyColor);
 
-		// --------- Draw the model
-        ourModel.Draw(shader);
+		// --------- Draw
+        for (const auto& obj : gameObjects) {
+            shader.setMat4("model", obj.getModelMatrix());
+            obj.model->Draw(shader);
+        }
 
 		// --------- Render ImGui
         ImGui_ImplOpenGL3_NewFrame();
@@ -194,6 +241,27 @@ int main()
             ImGui::ColorEdit3("Diffuse##", &dirLight.diffuse.x);
             ImGui::ColorEdit3("Specular##", &dirLight.specular.x);
         }
+
+        if (ImGui::CollapsingHeader("Objects")) {
+            for (auto& obj : gameObjects) {
+                if (ImGui::TreeNode(obj.name.c_str())) {
+                    ImGui::SliderFloat3("Position", &obj.position.x, -10.0f, 10.0f);
+                    ImGui::SliderFloat3("Rotation", &obj.rotation.x, 0.0f, 360.0f);
+                    ImGui::SliderFloat3("Scale", &obj.scale.x, 0.1f, 20.0f);
+                    ImGui::TreePop();
+                }
+            }
+        }
+
+		// Camera
+		if (ImGui::CollapsingHeader("Camera")) {
+			ImGui::Text("Position: %.2f, %.2f, %.2f", camera.Position.x, camera.Position.y, camera.Position.z);
+			ImGui::Text("Yaw: %.2f", camera.Yaw);
+			ImGui::Text("Pitch: %.2f", camera.Pitch);
+		}
+
+        ImGui::SliderFloat3("Local Offset", &localOffset.x, -30.0f, 30.0f);
+		ImGui::SliderFloat3("Spot dir", &spotDirection.x, -1.0f, 1.0f);
 
         ImGui::End();
 
@@ -308,7 +376,21 @@ void generateLights()
     pointLights.reserve(4);
 
     pointLights.emplace_back(glm::vec3(0.7f, 0.2f, 2.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
-    pointLights.emplace_back(glm::vec3(2.3f, -3.3f, -4.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
+    pointLights.emplace_back(glm::vec3(2.3f, 3.3f, -4.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
     pointLights.emplace_back(glm::vec3(-4.0f, 2.0f, -12.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
-    pointLights.emplace_back(glm::vec3(0.0f, 0.0f, -3.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
+    pointLights.emplace_back(glm::vec3(0.0f, 0.7f, -3.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
+}
+
+void updateSpotlight()
+{
+    if (!trainObject) return;
+
+    glm::mat4 rotationMatrix = glm::mat4(1.0f);
+    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(trainObject->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(trainObject->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(trainObject->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    spotLight.position = trainObject->position + glm::vec3(rotationMatrix * glm::vec4(localOffset, 1.0f));
+
+    spotLight.direction = glm::normalize(glm::vec3(rotationMatrix * glm::vec4(spotDirection, 0.0f)));
 }
