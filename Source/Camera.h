@@ -19,7 +19,7 @@ enum Camera_Movement {
 // Default camera values
 const float YAW = -90.0f;
 const float PITCH = 0.0f;
-const float SPEED = 0.0025f;
+const float SPEED = 5.5f;
 const float SENSITIVITY = 0.1f;
 const float ZOOM = 45.0f;
 const float SCROLL_SENSITIVITY = 2.0f;
@@ -76,10 +76,10 @@ public:
             Position -= Right * velocity;
         if (direction == RIGHT)
             Position += Right * velocity;
-		if (direction == UP)
-			Position += Up * velocity;
-		if (direction == DOWN)
-			Position -= Up * velocity;
+        if (direction == UP)
+            Position += Up * velocity;
+        if (direction == DOWN)
+            Position -= Up * velocity;
     }
 
     void processMouseMovement(float xoffset, float yoffset)

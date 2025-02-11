@@ -60,7 +60,7 @@ private:
         }
         // retrieve the directory path of the filepath
         size_t pos = path.find_last_of('/');
-        directory = (pos == std::string::npos ? "" : path.substr(0, pos) + "/";
+        directory = (pos == std::string::npos ? "" : path.substr(0, pos) + "/");
 
         // process ASSIMP's root node recursively
         processNode(scene->mRootNode, scene);

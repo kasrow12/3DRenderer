@@ -51,7 +51,13 @@
     <Library Include="includes\glfw\include\glfw3.lib" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\Light.h">
+    <ClInclude Include="Source\PointLight.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\SpotLight.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\DirLight.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
