@@ -19,19 +19,18 @@
 #include "Source/SpotLight.h"
 #include "Source/DirLight.h"
 
+class Scene;
+
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 void mouseCallback(GLFWwindow* window, double xpos, double ypos);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void updateWireFrame();
-void generateLights();
-void updateSpotlight();
+void setupScene(Scene& scene);
 
 int screenWidth = 1400;
 int screenHeight = 900;
-
-Camera camera(glm::vec3(0.0f, 1.0f, 15.0f));
 
 float deltaTime = 0.0f;
 double lastFrame = 0.0;
@@ -40,29 +39,22 @@ bool wireFrame = false;
 bool captureMouse = false;
 bool useBlinn = false;
 
-std::vector<PointLight> pointLights;
-SpotLight spotLight(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), 12.5f, 15.0f, 1.0f, 0.008f, 0.001f, glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(1.0f));
-DirLight dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f));
 
 glm::vec3 skyColor(0.2f, 0.3f, 0.3f);
 
-float fogDistance = 60.0f;
-glm::vec3 localOffset(-9, 3.5f, 0.0f);
 glm::vec3 spotDirection(-1.0f, -0.25f, 0.0f);
 
-struct GameObject
+
+class Transform
 {
-    Model* model;
-    glm::vec3 position;
-    glm::vec3 rotation;
-    glm::vec3 scale;
-    std::string name;
+public:
+    glm::vec3 position{ 0.0f };
+    glm::vec3 rotation{ 0.0f };
+    glm::vec3 scale{ 1.0f };
 
-    GameObject(Model* model, const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scale, const std::string& name)
-        : model(model), position(pos), rotation(rot), scale(scale), name(name) {}
-
-    glm::mat4 getModelMatrix() const {
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
+    glm::mat4 getModelMatrix() const
+	{
+        glm::mat4 modelMatrix(1.0f);
         modelMatrix = glm::translate(modelMatrix, position);
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -72,8 +64,187 @@ struct GameObject
     }
 };
 
-std::vector<GameObject> gameObjects;
-GameObject* trainObject = nullptr;
+class GameObject
+{
+public:
+    Model* model;
+    Transform transform;
+    std::string name;
+
+    // Movement parameters for train
+    bool isMoving = false;
+    // Radius of circular path
+    float radius = 15.0f;
+    float speed = 0.5f;
+    float currentAngle = 0.0f;
+
+    GameObject(Model* model, const Transform& transform, const std::string& name)
+        : model(model), transform(transform), name(name) {}
+
+    void update(float deltaTime)
+	{
+        if (isMoving)
+        {
+            // Update position in a circle
+            currentAngle += speed * deltaTime;
+            transform.position.x = radius * sin(currentAngle);
+            transform.position.z = radius * cos(currentAngle);
+
+            // Make the train face the direction of movement
+            transform.rotation.y = glm::degrees(atan2(-sin(currentAngle), -cos(currentAngle)));
+        }
+    }
+
+    void draw(Shader& shader) const
+	{
+        shader.setMat4("model", transform.getModelMatrix());
+        model->Draw(shader);
+    }
+};
+
+class Scene
+{
+public:
+    std::vector<std::unique_ptr<GameObject>> gameObjects;
+    std::vector<PointLight> pointLights;
+    SpotLight spotLight;
+    DirLight dirLight;
+	Model* sphereModel;
+    float fogDistance = 60.0f;
+
+	Camera camera = Camera(glm::vec3(0.0f, 1.0f, 15.0f));
+
+    Scene() :
+        spotLight(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), 12.5f, 15.0f, 1.0f, 0.008f, 0.001f,
+            glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(1.0f)),
+        dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f)) {
+        generateLights();
+    }
+
+    void update(float deltaTime)
+	{
+		if (gameObjects.empty())
+			return;
+
+        gameObjects[0]->update(deltaTime);
+        updateSpotlight();
+    }
+
+    void draw(Shader& shader, Shader& lightShader)
+	{
+        setupShaderUniforms(shader);
+        drawObjects(shader);
+		setupLightUniforms(lightShader);
+        drawLights(lightShader);
+    }
+
+private:
+    void generateLights()
+	{
+        pointLights.clear();
+        pointLights.reserve(4);
+
+        const float intensity = 0.8f;
+        const glm::vec3 ambient(0.05f);
+        const glm::vec3 specular(1.0f);
+
+        std::vector<glm::vec3> positions = {
+            glm::vec3(0.7f, 0.2f, 10.0f),
+            glm::vec3(2.3f, 3.3f, -4.0f),
+            glm::vec3(-4.0f, 2.0f, -12.0f),
+            glm::vec3(0.0f, 0.7f, -3.0f)
+        };
+
+        std::vector<glm::vec3> colors = {
+            glm::vec3(0.1f, 0.8f, 0.2f),
+			glm::vec3(0.1f, 0.2f, 0.7f),
+			glm::vec3(0.8f, 0.1f, 0.1f),
+			glm::vec3(0.8f, 0.8f, 0.8f)
+        };
+
+		// Create 4 point lights (4 is also the number of point lights in the shader)
+		for (int i = 0; i < 4; i++)
+            pointLights.emplace_back(positions[i], 1.0f, 0.09f, 0.032f, ambient, colors[i], colors[i]);
+    }
+
+    void setupShaderUniforms(Shader& shader)
+	{
+        shader.use();
+        shader.setVec3("viewPos", camera.Position);
+        shader.setBool("blinn", useBlinn);
+		shader.setFloat("material.shininess", 32.0f); // no specular map
+
+        // Matrices
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
+            (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
+        shader.setMat4("projection", projection);
+        shader.setMat4("view", camera.getViewMatrix());
+
+        // Lights
+        dirLight.SetUniforms(shader);
+        for (size_t i = 0; i < pointLights.size(); i++)
+        {
+            pointLights[i].SetUniforms(shader, i);
+        }
+        spotLight.SetUniforms(shader);
+
+        // Fog
+        shader.setFloat("fogDistance", fogDistance);
+        shader.setVec3("skyColor", skyColor);
+    }
+
+	void setupLightUniforms(Shader& lightShader)
+    {
+        lightShader.use();
+        lightShader.setMat4("projection", glm::perspective(glm::radians(camera.Zoom),
+            (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f));
+        lightShader.setMat4("view", camera.getViewMatrix());
+        lightShader.setVec3("viewPos", camera.Position);
+        lightShader.setFloat("fogDistance", fogDistance);
+        lightShader.setVec3("skyColor", skyColor);
+    }
+
+	// Spotlight fixed to first object (train)
+    void updateSpotlight()
+	{
+        static glm::vec3 localOffset(-9, 3.5f, 0.0f);
+
+		if (gameObjects.empty())
+			return;
+
+		const auto& transform = gameObjects[0]->transform;
+        glm::mat4 rotationMatrix = glm::mat4(1.0f);
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(transform.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(transform.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(transform.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+        spotLight.position = transform.position + glm::vec3(rotationMatrix * glm::vec4(localOffset, 1.0f));
+        spotLight.direction = glm::normalize(glm::vec3(rotationMatrix * glm::vec4(spotDirection, 0.0f)));
+    }
+
+	void drawObjects(Shader& shader) const
+    {
+        for (const auto& obj : gameObjects)
+        {
+			shader.setMat4("model", obj->transform.getModelMatrix());
+            obj->model->Draw(shader);
+        }
+    }
+
+	void drawLights(Shader& lightShader) const
+	{
+		for (const auto& light : pointLights)
+		{
+			glm::mat4 model = glm::translate(glm::mat4(1.0f), light.position);
+			model = glm::scale(model, glm::vec3(0.2f));
+			lightShader.setMat4("model", model);
+			lightShader.setVec3("lightColor", light.diffuse);
+			sphereModel->Draw(lightShader);
+		}
+	}
+};
+
+Scene scene;
 
 int main()
 {
@@ -116,25 +287,7 @@ int main()
     Shader shader("Assets/Shaders/vertex.vs", "Assets/Shaders/fragment.fs");
     Shader lightShader("Assets/Shaders/vertex.vs", "Assets/Shaders/lightFragment.fs");
 
-    Model trainModel("Assets/Objects/GEVO/Gevo.obj", false);
-	//Model backpackModel("Assets/Objects/backpack/backpack.obj");
-    Model sphereModel ("Assets/Objects/basics/sphere3.obj");
-    Model floorModel ("Assets/Objects/basics/floor.obj");
-
-    gameObjects.emplace_back(&trainModel, glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f), glm::vec3(1.0f), "Train");
-    //gameObjects.emplace_back(&backpackModel, glm::vec3(0.0f, -2.0f, 0.0f),
-    //    glm::vec3(0.0f), glm::vec3(1.0f), "Backpack");
-    gameObjects.emplace_back(&floorModel, glm::vec3(0.0f),
-        glm::vec3(0.0f), glm::vec3(100, 0.0001f, 100), "Floor");
-
-    gameObjects.emplace_back(&sphereModel, glm::vec3(0.0f),
-        glm::vec3(0.0f), glm::vec3(1), "Sphere");
-
-    trainObject = &gameObjects[0];
-
-
-    generateLights();
+	setupScene(scene);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -143,71 +296,13 @@ int main()
 		lastFrame = currentFrame;
 
         processInput(window);
-        updateSpotlight();
 
         glClearColor(skyColor.x, skyColor.y, skyColor.z, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// --------- Shader uniforms
-        shader.use();
-        shader.setVec3("viewPos", camera.Position);
-		shader.setBool("blinn", useBlinn);
-        shader.setFloat("material.shininess", 32.0f);
-
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
-		shader.setMat4("projection", projection);
-
-		glm::mat4 view = camera.getViewMatrix();
-		shader.setMat4("view", view);
-
-		shader.setMat4("model", glm::scale(glm::mat4(1.0f), glm::vec3(1, 1, 1)));
-
-		// --------- Set lights
-		dirLight.SetUniforms(shader);
-
-		for (size_t i = 0; i < pointLights.size(); i++)
-		{
-			pointLights[i].SetUniforms(shader, i);
-		}
-
-		spotLight.SetUniforms(shader);
-
-		// --------- Set fog
-		shader.setFloat("fogDistance", fogDistance);
-		shader.setVec3("skyColor", skyColor);
-
-		// --------- Draw
-        for (const auto& obj : gameObjects) {
-            shader.setMat4("model", obj.getModelMatrix());
-            obj.model->Draw(shader);
-        }
-
-		// --------- Draw lights
-		lightShader.use();
-        lightShader.setMat4("projection", projection);
-        lightShader.setMat4("view", view);
-
-        lightShader.setVec3("viewPos", camera.Position);
-        lightShader.setFloat("fogDistance", fogDistance);
-        lightShader.setVec3("skyColor", skyColor);
-
-		for (const auto& light : pointLights)
-        {
-			glm::mat4 model = glm::translate(glm::mat4(1.0f), light.position);
-			model = glm::scale(model, glm::vec3(0.2f));
-            lightShader.setMat4("model", model);
-			lightShader.setVec3("lightColor", light.diffuse);
-			sphereModel.Draw(lightShader);
-		}
-
-
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), spotLight.position);
-        model = glm::scale(model, glm::vec3(0.2f));
-		lightShader.setMat4("model", model);
-		lightShader.setVec3("lightColor", spotLight.diffuse);
-		sphereModel.Draw(lightShader);
-
-
+		scene.update(deltaTime);
+		scene.draw(shader, lightShader);
+        
 		// --------- Render ImGui
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -226,69 +321,73 @@ int main()
         }
 		ImGui::Checkbox("Blinn (B)", &useBlinn);
 
-        ImGui::SliderFloat("Fog Distance", &fogDistance, 0.0f, 100.0f);
+        ImGui::SliderFloat("Fog Distance", &scene.fogDistance, 0.0f, 100.0f);
         ImGui::ColorEdit3("Sky Color", &skyColor.x);
 
 		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 
         // Point Lights
-        if (ImGui::CollapsingHeader("Point Lights")) {
-            for (size_t i = 0; i < pointLights.size(); i++) {
-                if (ImGui::TreeNode(("Point Light " + std::to_string(i + 1)).c_str())) {
-                    ImGui::SliderFloat3(("Position##" + std::to_string(i)).c_str(), &pointLights[i].position.x, -10.0f, 10.0f);
-                    ImGui::SliderFloat(("Constant##" + std::to_string(i)).c_str(), &pointLights[i].constant, 0.0f, 1.0f);
-                    ImGui::SliderFloat(("Linear##" + std::to_string(i)).c_str(), &pointLights[i].linear, 0.0f, 0.1f);
-                    ImGui::SliderFloat(("Quadratic##" + std::to_string(i)).c_str(), &pointLights[i].quadratic, 0.0f, 0.1f);
-                    ImGui::ColorEdit3(("Ambient##" + std::to_string(i)).c_str(), &pointLights[i].ambient.x);
-                    ImGui::ColorEdit3(("Diffuse##" + std::to_string(i)).c_str(), &pointLights[i].diffuse.x);
-                    ImGui::ColorEdit3(("Specular##" + std::to_string(i)).c_str(), &pointLights[i].specular.x);
+        if (ImGui::CollapsingHeader("Point Lights")) 
+        {
+            for (size_t i = 0; i < scene.pointLights.size(); i++) 
+            {
+                if (ImGui::TreeNode(("Point Light " + std::to_string(i + 1)).c_str()))
+                {
+                    ImGui::SliderFloat3(("Position##" + std::to_string(i)).c_str(), &scene.pointLights[i].position.x, -10.0f, 10.0f);
+                    ImGui::SliderFloat(("Constant##" + std::to_string(i)).c_str(), &scene.pointLights[i].constant, 0.0f, 1.0f);
+                    ImGui::SliderFloat(("Linear##" + std::to_string(i)).c_str(), &scene.pointLights[i].linear, 0.0f, 0.1f);
+                    ImGui::SliderFloat(("Quadratic##" + std::to_string(i)).c_str(), &scene.pointLights[i].quadratic, 0.0f, 0.1f);
+                    ImGui::ColorEdit3(("Ambient##" + std::to_string(i)).c_str(), &scene.pointLights[i].ambient.x);
+                    ImGui::ColorEdit3(("Diffuse##" + std::to_string(i)).c_str(), &scene.pointLights[i].diffuse.x);
+                    ImGui::ColorEdit3(("Specular##" + std::to_string(i)).c_str(), &scene.pointLights[i].specular.x);
                     ImGui::TreePop();
                 }
             }
         }
 
-        // Spot Light
-        if (ImGui::CollapsingHeader("Spot Light")) {
-            ImGui::SliderFloat3("Position", &spotLight.position.x, -10.0f, 10.0f);
-            ImGui::SliderFloat3("Direction", &spotLight.direction.x, -10.0f, 10.0f);
-            ImGui::SliderFloat("Cut Off", &spotLight.cutOff, 0.0f, 90.0f);
-            ImGui::SliderFloat("Outer Cut Off", &spotLight.outerCutOff, 0.0f, 90.0f);
-            ImGui::SliderFloat("Constant", &spotLight.constant, 0.0f, 1.0f);
-            ImGui::SliderFloat("Linear", &spotLight.linear, 0.0f, 0.1f);
-            ImGui::SliderFloat("Quadratic", &spotLight.quadratic, 0.0f, 0.1f);
-            ImGui::ColorEdit3("Ambient", &spotLight.ambient.x);
-            ImGui::ColorEdit3("Diffuse", &spotLight.diffuse.x);
-            ImGui::ColorEdit3("Specular", &spotLight.specular.x);
+        if (ImGui::CollapsingHeader("Directional Light"))
+        {
+            ImGui::SliderFloat3("Direction##", &scene.dirLight.direction.x, -10.0f, 10.0f);
+            ImGui::ColorEdit3("Ambient##", &scene.dirLight.ambient.x);
+            ImGui::ColorEdit3("Diffuse##", &scene.dirLight.diffuse.x);
+            ImGui::ColorEdit3("Specular##", &scene.dirLight.specular.x);
         }
 
-        // Directional Light
-        if (ImGui::CollapsingHeader("Directional Light")) {
-            ImGui::SliderFloat3("Direction##", &dirLight.direction.x, -10.0f, 10.0f);
-            ImGui::ColorEdit3("Ambient##", &dirLight.ambient.x);
-            ImGui::ColorEdit3("Diffuse##", &dirLight.diffuse.x);
-            ImGui::ColorEdit3("Specular##", &dirLight.specular.x);
+        if (ImGui::CollapsingHeader("Train Spot Light"))
+        {
+            ImGui::SliderFloat3("Train light direction", &spotDirection.x, -1.0f, 1.0f);
+            ImGui::SliderFloat("Cut Off", &scene.spotLight.cutOff, 0.0f, 90.0f);
+            ImGui::SliderFloat("Outer Cut Off", &scene.spotLight.outerCutOff, 0.0f, 90.0f);
+            ImGui::SliderFloat("Constant", &scene.spotLight.constant, 0.0f, 1.0f);
+            ImGui::SliderFloat("Linear", &scene.spotLight.linear, 0.0f, 0.1f);
+            ImGui::SliderFloat("Quadratic", &scene.spotLight.quadratic, 0.0f, 0.1f);
+            ImGui::ColorEdit3("Ambient", &scene.spotLight.ambient.x);
+            ImGui::ColorEdit3("Diffuse", &scene.spotLight.diffuse.x);
+            ImGui::ColorEdit3("Specular", &scene.spotLight.specular.x);
         }
 
-        if (ImGui::CollapsingHeader("Objects")) {
-            for (auto& obj : gameObjects) {
-                if (ImGui::TreeNode(obj.name.c_str())) {
-                    ImGui::SliderFloat3("Position", &obj.position.x, -10.0f, 10.0f);
-                    ImGui::SliderFloat3("Rotation", &obj.rotation.x, 0.0f, 360.0f);
-                    ImGui::SliderFloat3("Scale", &obj.scale.x, 0.1f, 20.0f);
+        if (ImGui::CollapsingHeader("Objects"))
+        {
+            for (auto& obj : scene.gameObjects) 
+            {
+                if (ImGui::TreeNode(obj->name.c_str()))
+                {
+                    ImGui::SliderFloat3("Position", &obj->transform.position.x, -20.0f, 20.0f);
+                    ImGui::SliderFloat3("Rotation", &obj->transform.rotation.x, 0.0f, 360.0f);
+                    ImGui::SliderFloat3("Scale", &obj->transform.scale.x, 0.1f, 20.0f);
                     ImGui::TreePop();
                 }
             }
         }
 
-		// Camera
-		if (ImGui::CollapsingHeader("Camera")) {
-			ImGui::Text("Position: %.2f, %.2f, %.2f", camera.Position.x, camera.Position.y, camera.Position.z);
-			ImGui::Text("Yaw: %.2f", camera.Yaw);
-			ImGui::Text("Pitch: %.2f", camera.Pitch);
+		// Train movement
+		if (!scene.gameObjects.empty())
+		{
+			ImGui::Text("Train Movement");
+			ImGui::Checkbox("Enable Movement", &scene.gameObjects[0]->isMoving);
+			ImGui::SliderFloat("Movement Radius", &scene.gameObjects[0]->radius, 1.0f, 50.0f);
+			ImGui::SliderFloat("Movement Speed", &scene.gameObjects[0]->speed, 0.1f, 2.0f);
 		}
-
-        ImGui::SliderFloat3("Local Offset", &localOffset.x, -30.0f, 30.0f);
-		ImGui::SliderFloat3("Spot dir", &spotDirection.x, -1.0f, 1.0f);
 
         ImGui::End();
 
@@ -310,17 +409,17 @@ void processInput(GLFWwindow* window)
 
 	// Camera controls
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera.processKeyboard(FORWARD, deltaTime);
+		scene.camera.processKeyboard(FORWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		camera.processKeyboard(BACKWARD, deltaTime);
+        scene.camera.processKeyboard(BACKWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		camera.processKeyboard(LEFT, deltaTime);
+        scene.camera.processKeyboard(LEFT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		camera.processKeyboard(RIGHT, deltaTime);
+        scene.camera.processKeyboard(RIGHT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-		camera.processKeyboard(UP, deltaTime);
+        scene.camera.processKeyboard(UP, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        camera.processKeyboard(DOWN, deltaTime);
+        scene.camera.processKeyboard(DOWN, deltaTime);
 }
 
 void mouseCallback(GLFWwindow* window, double xpos, double ypos)
@@ -348,7 +447,7 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos)
     lastX = xpos;
     lastY = ypos;
 
-    camera.processMouseMovement((float)xOffset, (float)yOffset);
+    scene.camera.processMouseMovement((float)xOffset, (float)yOffset);
 }
 
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
@@ -356,7 +455,7 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 	if (!captureMouse)
 		return;
 
-	camera.processMouseScroll((float)yoffset);
+    scene.camera.processMouseScroll((float)yoffset);
 }
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
@@ -397,27 +496,29 @@ void updateWireFrame()
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-void generateLights()
+void setupScene(Scene& scene)
 {
-    pointLights.clear();
-    pointLights.reserve(4);
+    Model* trainModel = new Model("Assets/Objects/GEVO/Gevo.obj", false);
+    Model* sphereModel = new Model("Assets/Objects/basics/sphere.obj");
+    Model* floorModel = new Model("Assets/Objects/basics/floor.obj");
+    Model* trexModel = new Model("Assets/Objects/trex/trex.obj");
 
-    pointLights.emplace_back(glm::vec3(0.7f, 0.2f, 2.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
-    pointLights.emplace_back(glm::vec3(2.3f, 3.3f, -4.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
-    pointLights.emplace_back(glm::vec3(-4.0f, 2.0f, -12.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
-    pointLights.emplace_back(glm::vec3(0.0f, 0.7f, -3.0f), 1.0f, 0.09f, 0.032f, glm::vec3(0.05f), glm::vec3(0.8f), glm::vec3(1.0f));
-}
+	scene.sphereModel = sphereModel;
 
-void updateSpotlight()
-{
-    if (!trainObject) return;
+    Transform trainTransform;
+    trainTransform.scale = glm::vec3(1.0f);
+    auto train = std::make_unique<GameObject>(trainModel, trainTransform, "Train");
+    train->isMoving = true;
+    scene.gameObjects.push_back(std::move(train));
 
-    glm::mat4 rotationMatrix = glm::mat4(1.0f);
-    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(trainObject->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(trainObject->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    rotationMatrix = glm::rotate(rotationMatrix, glm::radians(trainObject->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+    Transform floorTransform;
+    floorTransform.scale = glm::vec3(100, 0.0001f, 100);
+    scene.gameObjects.push_back(std::make_unique<GameObject>(floorModel, floorTransform, "Floor"));
 
-    spotLight.position = trainObject->position + glm::vec3(rotationMatrix * glm::vec4(localOffset, 1.0f));
+    Transform sphereTransform;
+    scene.gameObjects.push_back(std::make_unique<GameObject>(sphereModel, sphereTransform, "Sphere"));
 
-    spotLight.direction = glm::normalize(glm::vec3(rotationMatrix * glm::vec4(spotDirection, 0.0f)));
+    Transform trexTransform;
+	trexTransform.position = glm::vec3(0.0f, -0.05f, 7.0f);
+    scene.gameObjects.push_back(std::make_unique<GameObject>(trexModel, trexTransform, "T-rex"));
 }
