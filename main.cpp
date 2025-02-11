@@ -45,6 +45,8 @@ DirLight dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.
 
 glm::vec3 skyColor(0.2f, 0.3f, 0.3f);
 
+float fogDistance = 30.0f;
+
 int main()
 {
     glfwInit();
@@ -85,7 +87,8 @@ int main()
 
     Shader shader("Assets/Shaders/vertex.vs", "Assets/Shaders/fragment.fs");
 
-	Model ourModel("Assets/Objects/backpack/backpack.obj");
+    Model ourModel("Assets/Objects/GEVO/Gevo.obj", false);
+	//Model ourModel("Assets/Objects/backpack/backpack.obj");
 
     generateLights();
 
@@ -125,9 +128,8 @@ int main()
 		spotLight.SetUniforms(shader);
 
 		// --------- Set fog
-		shader.setFloat("fogSettings.maxDistance", 25.0f);
-		shader.setFloat("fogSettings.minDistance", 1.0f);
-		shader.setVec3("fogSettings.color", skyColor);
+		shader.setFloat("fogDistance", fogDistance);
+		shader.setVec3("skyColor", skyColor);
 
 		// --------- Draw the model
         ourModel.Draw(shader);
@@ -149,6 +151,10 @@ int main()
             updateWireFrame();
         }
 		ImGui::Checkbox("Blinn (B)", &useBlinn);
+
+        ImGui::SliderFloat("Fog Distance", &fogDistance, 0.0f, 100.0f);
+        ImGui::ColorEdit3("Sky Color", &skyColor.x);
+
 		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 
         // Point Lights
@@ -183,10 +189,10 @@ int main()
 
         // Directional Light
         if (ImGui::CollapsingHeader("Directional Light")) {
-            ImGui::SliderFloat3("Direction", &dirLight.direction.x, -10.0f, 10.0f);
-            ImGui::ColorEdit3("Ambient", &dirLight.ambient.x);
-            ImGui::ColorEdit3("Diffuse", &dirLight.diffuse.x);
-            ImGui::ColorEdit3("Specular", &dirLight.specular.x);
+            ImGui::SliderFloat3("Direction##", &dirLight.direction.x, -10.0f, 10.0f);
+            ImGui::ColorEdit3("Ambient##", &dirLight.ambient.x);
+            ImGui::ColorEdit3("Diffuse##", &dirLight.diffuse.x);
+            ImGui::ColorEdit3("Specular##", &dirLight.specular.x);
         }
 
         ImGui::End();

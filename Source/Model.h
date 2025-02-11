@@ -33,9 +33,9 @@ public:
     std::string directory;
 
     // constructor, expects a filepath to a 3D model.
-    Model(std::string const &path)
+    Model(std::string const &path, bool flipUVs = true)
     {
-        loadModel(path);
+        loadModel(path, flipUVs);
     }
 
     // draws the model, and thus all its meshes
@@ -47,11 +47,11 @@ public:
     
 private:
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
-    void loadModel(std::string const &path)
+	void loadModel(std::string const& path, bool flipUVs)
     {
         // read file via ASSIMP
         Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | (flipUVs ? aiProcess_FlipUVs : 0));
         // check for errors
         if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
         {
