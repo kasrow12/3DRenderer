@@ -47,7 +47,7 @@ DirLight dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.
 glm::vec3 skyColor(0.2f, 0.3f, 0.3f);
 
 float fogDistance = 60.0f;
-glm::vec3 localOffset(-8.2f, 3.9f, 0.0f);
+glm::vec3 localOffset(-9, 3.5f, 0.0f);
 glm::vec3 spotDirection(-1.0f, -0.25f, 0.0f);
 
 struct GameObject
@@ -114,6 +114,7 @@ int main()
     stbi_set_flip_vertically_on_load(true);
 
     Shader shader("Assets/Shaders/vertex.vs", "Assets/Shaders/fragment.fs");
+    Shader lightShader("Assets/Shaders/vertex.vs", "Assets/Shaders/lightFragment.fs");
 
     Model trainModel("Assets/Objects/GEVO/Gevo.obj", false);
 	//Model backpackModel("Assets/Objects/backpack/backpack.obj");
@@ -180,6 +181,32 @@ int main()
             shader.setMat4("model", obj.getModelMatrix());
             obj.model->Draw(shader);
         }
+
+		// --------- Draw lights
+		lightShader.use();
+        lightShader.setMat4("projection", projection);
+        lightShader.setMat4("view", view);
+
+        lightShader.setVec3("viewPos", camera.Position);
+        lightShader.setFloat("fogDistance", fogDistance);
+        lightShader.setVec3("skyColor", skyColor);
+
+		for (const auto& light : pointLights)
+        {
+			glm::mat4 model = glm::translate(glm::mat4(1.0f), light.position);
+			model = glm::scale(model, glm::vec3(0.2f));
+            lightShader.setMat4("model", model);
+			lightShader.setVec3("lightColor", light.diffuse);
+			sphereModel.Draw(lightShader);
+		}
+
+
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), spotLight.position);
+        model = glm::scale(model, glm::vec3(0.2f));
+		lightShader.setMat4("model", model);
+		lightShader.setVec3("lightColor", spotLight.diffuse);
+		sphereModel.Draw(lightShader);
+
 
 		// --------- Render ImGui
         ImGui_ImplOpenGL3_NewFrame();
