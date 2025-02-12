@@ -20,6 +20,10 @@ Potok renderowania z teselacj¹ wygl¹da nastêpuj¹co:
 3. Tessellation Evaluation Shader
 4. Fragment Shader
 
+W aplikacji u¿ytkownik mo¿e zmieniæ rozdzielczoœæ powierzchni Beziera w menu. Aby lepiej uwidoczniæ efekt, mo¿na w³¹czyæ tryb wyœwietlania siatki (klawisz `F`).
+
+[ród³o](https://learnopengl.com/Advanced-OpenGL/Tessellation)
+
 ## Zmiana sk³adowej zwierciadlanej Phong/Blinn
 We [fragment shaderze](Assets/Shaders/fragment.fs) u¿yta sk³adowa zwierciadlana (Phonga/Blinn) zale¿y od uniformu `blinn`.
 W aplikacji mo¿na zmieniaæ wartoœæ tej zmiennej, tym samym sk³adowej zwierciadlanej za pomoc¹ klawisza `B`.
