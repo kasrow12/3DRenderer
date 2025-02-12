@@ -147,6 +147,7 @@
     <ClInclude Include="Source\DirLight.h" />
     <ClInclude Include="Source\PointLight.h" />
     <ClInclude Include="Source\SpotLight.h" />
+    <ClInclude Include="Source\Transform.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

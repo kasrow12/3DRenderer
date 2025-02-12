@@ -18,6 +18,7 @@
 #include "Source/PointLight.h"
 #include "Source/SpotLight.h"
 #include "Source/DirLight.h"
+#include "Source/Transform.h"
 
 class Scene;
 
@@ -38,6 +39,7 @@ double lastFrame = 0.0;
 bool wireFrame = false;
 bool captureMouse = false;
 bool useBlinn = false;
+//bool isDayLight = true;
 
 
 glm::vec3 skyColor(0.2f, 0.3f, 0.3f);
@@ -45,24 +47,6 @@ glm::vec3 skyColor(0.2f, 0.3f, 0.3f);
 glm::vec3 spotDirection(-1.0f, -0.25f, 0.0f);
 
 
-class Transform
-{
-public:
-    glm::vec3 position{ 0.0f };
-    glm::vec3 rotation{ 0.0f };
-    glm::vec3 scale{ 1.0f };
-
-    glm::mat4 getModelMatrix() const
-	{
-        glm::mat4 modelMatrix(1.0f);
-        modelMatrix = glm::translate(modelMatrix, position);
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-        modelMatrix = glm::scale(modelMatrix, scale);
-        return modelMatrix;
-    }
-};
 
 class GameObject
 {
@@ -117,7 +101,8 @@ public:
     Scene() :
         spotLight(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), 12.5f, 15.0f, 1.0f, 0.008f, 0.001f,
             glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(1.0f)),
-        dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f)) {
+        dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f))
+	{
         generateLights();
     }
 
@@ -486,6 +471,16 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		else
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	}
+
+	// Change camera mode
+    if (key == GLFW_KEY_1 && action == GLFW_PRESS)
+        scene.camera.setMode(STATIC_SCENE);
+    if (key == GLFW_KEY_2 && action == GLFW_PRESS)
+		scene.camera.setMode(STATIC_TRACKING);
+    if (key == GLFW_KEY_3 && action == GLFW_PRESS)
+		scene.camera.setMode(ATTACHED);
+    if (key == GLFW_KEY_4 && action == GLFW_PRESS)
+		scene.camera.setMode(FREE);
 }
 
 void updateWireFrame()
@@ -510,15 +505,26 @@ void setupScene(Scene& scene)
     auto train = std::make_unique<GameObject>(trainModel, trainTransform, "Train");
     train->isMoving = true;
     scene.gameObjects.push_back(std::move(train));
+    scene.camera.TargetTransform = &scene.gameObjects[0]->transform;
 
     Transform floorTransform;
     floorTransform.scale = glm::vec3(100, 0.0001f, 100);
     scene.gameObjects.push_back(std::make_unique<GameObject>(floorModel, floorTransform, "Floor"));
 
     Transform sphereTransform;
+	sphereTransform.position = glm::vec3(0.0f, 1.0f, 0.0f);
     scene.gameObjects.push_back(std::make_unique<GameObject>(sphereModel, sphereTransform, "Sphere"));
 
     Transform trexTransform;
-	trexTransform.position = glm::vec3(0.0f, -0.05f, 7.0f);
+    trexTransform.position = glm::vec3(0.0f, -0.05f, 7.0f);
     scene.gameObjects.push_back(std::make_unique<GameObject>(trexModel, trexTransform, "T-rex"));
+
+    Transform trex2Transform;
+    trex2Transform.position = glm::vec3(20.0f, -0.05f, -7.0f);
+    scene.gameObjects.push_back(std::make_unique<GameObject>(trexModel, trex2Transform, "T-rex2"));
+
+    Transform trex3Transform;
+    trex3Transform.position = glm::vec3(-40.0f, -0.05f, 7.0f);
+    scene.gameObjects.push_back(std::make_unique<GameObject>(trexModel, trex3Transform, "T-rex3"));
+
 }

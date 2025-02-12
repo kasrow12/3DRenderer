@@ -2,10 +2,12 @@
 #define CAMERA_H
 
 // https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/camera.h
+// with modifications to support different camera modes
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include "Transform.h"
 
 enum Camera_Movement {
     FORWARD,
@@ -16,10 +18,17 @@ enum Camera_Movement {
     DOWN,
 };
 
+enum CameraMode {
+    STATIC_SCENE,      // Static camera observing the scene
+    STATIC_TRACKING,   // Static camera tracking moving object
+    ATTACHED,          // Third person perspective
+    FREE              // Free camera
+};
+
 // Default camera values
 const float YAW = -90.0f;
 const float PITCH = 0.0f;
-const float SPEED = 5.5f;
+const float SPEED = 7.5f;
 const float SENSITIVITY = 0.1f;
 const float ZOOM = 45.0f;
 const float SCROLL_SENSITIVITY = 2.0f;
@@ -41,8 +50,11 @@ public:
     float MouseSensitivity;
     float Zoom;
 
+    CameraMode CurrentMode;
+    Transform* TargetTransform;
+
     // constructor with vectors
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
+	Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH, CameraMode mode = FREE) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM), CurrentMode(mode)
     {
         Position = position;
         WorldUp = up;
@@ -50,23 +62,43 @@ public:
         Pitch = pitch;
         updateCameraVectors();
     }
-    // constructor with scalar values
-    Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
-    {
-        Position = glm::vec3(posX, posY, posZ);
-        WorldUp = glm::vec3(upX, upY, upZ);
-        Yaw = yaw;
-        Pitch = pitch;
-        updateCameraVectors();
-    }
 
-    glm::mat4 getViewMatrix() const
+    glm::mat4 getViewMatrix()
     {
-        return glm::lookAt(Position, Position + Front, Up);
+        static glm::vec3 localOffset(11, 11, 0);
+        static glm::vec3 viewDir(-1, -0.3, 0);
+
+		switch (CurrentMode)
+	    {
+	    case STATIC_SCENE:
+			return glm::lookAt(Position, glm::vec3(0.0f), Up);
+		case STATIC_TRACKING:
+			return glm::lookAt(Position, TargetTransform->position, WorldUp);
+	    	// third person perspective
+	    case ATTACHED:
+
+            glm::mat4 rotationMatrix = glm::mat4(1.0f);
+            rotationMatrix = glm::rotate(rotationMatrix, glm::radians(TargetTransform->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            rotationMatrix = glm::rotate(rotationMatrix, glm::radians(TargetTransform->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            rotationMatrix = glm::rotate(rotationMatrix, glm::radians(TargetTransform->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+			glm::vec4 offset = rotationMatrix * glm::vec4(localOffset, 1.0f);
+			glm::vec3 cameraPos = TargetTransform->position + glm::vec3(offset);
+            glm::vec3 direction = glm::normalize(glm::vec3(rotationMatrix * glm::vec4(viewDir, 0.0f)));
+            Position = cameraPos;
+
+			return glm::lookAt(Position, Position + direction, WorldUp);
+
+	    case FREE:
+	    default:
+			return glm::lookAt(Position, Position + Front, Up);
+	    }
     }
 
     void processKeyboard(Camera_Movement direction, float deltaTime)
     {
+		if (CurrentMode != FREE) return;
+
         float velocity = MovementSpeed * deltaTime;
         if (direction == FORWARD)
             Position += Front * velocity;
@@ -82,8 +114,25 @@ public:
             Position -= Up * velocity;
     }
 
+	void setMode(CameraMode mode)
+	{
+		static glm::vec3 lastPosition = Position;
+		if (CurrentMode == FREE)
+			lastPosition = Position;
+
+		CurrentMode = mode;
+        if (mode == STATIC_SCENE)
+			Position = glm::vec3(7.0f, 30.0f, 7.0f);
+		if (mode == STATIC_TRACKING)
+			Position = glm::vec3(0.0f, 17.0f, 0.0f);
+		if (mode == FREE)
+			Position = lastPosition;
+	}
+
     void processMouseMovement(float xoffset, float yoffset)
     {
+        if (CurrentMode != FREE) return;
+
         xoffset *= MouseSensitivity;
         yoffset *= MouseSensitivity;
 

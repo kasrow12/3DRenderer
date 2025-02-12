@@ -60,5 +60,8 @@
     <ClInclude Include="Source\DirLight.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
