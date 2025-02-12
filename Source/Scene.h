@@ -56,7 +56,7 @@ public:
     Transform bezierTransform;
     float time = 0.0f;
     float animationSpeed = 3.5f;
-    float animationAmplitude = 0.001f;
+    float animationAmplitude = 0.005f;
 
     Scene() :
         spotLight(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), 12.5f, 15.0f, 1.0f, 0.008f, 0.001f,
@@ -242,11 +242,13 @@ private:
         glBufferData(GL_ARRAY_BUFFER, controlPoints.size() * sizeof(glm::vec3), &controlPoints[0], GL_STATIC_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
         glEnableVertexAttribArray(0);
-        glBindVertexArray(0);
 
         glBindVertexArray(vao);
         glPatchParameteri(GL_PATCH_VERTICES, 16); // 16 control points
         glDrawArrays(GL_PATCHES, 0, 16);
         glBindVertexArray(0);
+
+		glDeleteVertexArrays(1, &vao);
+		glDeleteBuffers(1, &vbo);
     }
 };

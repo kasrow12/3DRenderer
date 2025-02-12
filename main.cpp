@@ -56,6 +56,8 @@ int main()
 	glfwSetCursorPosCallback(window, mouseCallback);
 	glfwSetScrollCallback(window, scrollCallback);
 	glfwSetKeyCallback(window, keyCallback);
+
+	glfwSwapInterval(1);
     
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -103,8 +105,8 @@ int main()
 
 void processInput(GLFWwindow* window)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+	//if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    //    glfwSetWindowShouldClose(window, true);
 
 	// Camera controls
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -356,7 +358,6 @@ void drawImGui()
     ImGui::Text("F - Toggle Wireframe");
     ImGui::Text("B - Toggle Blinn-Phong");
     ImGui::Text("N - Toggle Day/Night");
-    ImGui::Text("ESC - Exit");
     ImGui::End();
 
     ImGui::Render();
