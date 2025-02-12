@@ -1,5 +1,4 @@
-#ifndef DIRECTIONALLIGHT_H
-#define DIRECTIONALLIGHT_H
+#pragma once
 
 #include <glm/vec3.hpp>
 
@@ -28,5 +27,3 @@ public:
 		shader.setVec3("dirLight.specular", specular);
 	}
 };
-
-#endif

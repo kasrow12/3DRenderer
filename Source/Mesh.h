@@ -1,6 +1,4 @@
-#ifndef MESH_H
-#define MESH_H
-
+#pragma once
 // https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/mesh.h
 
 #include <glad/glad.h>
@@ -138,4 +136,3 @@ private:
         glBindVertexArray(0);
     }
 };
-#endif

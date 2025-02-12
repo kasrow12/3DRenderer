@@ -1,5 +1,5 @@
-#ifndef TRANSFORM_H
-#define TRANSFORM_H
+#pragma once
+
 #include <glm/ext/matrix_transform.hpp>
 
 class Transform
@@ -20,5 +20,3 @@ public:
         return modelMatrix;
     }
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+#pragma once
 
 // https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/camera.h
 // with modifications to support different camera modes
@@ -166,4 +165,3 @@ private:
         Up = glm::normalize(glm::cross(Right, Front));
     }
 };
-#endif

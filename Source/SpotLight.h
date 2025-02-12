@@ -1,5 +1,5 @@
-#ifndef SPOTLIGHT_H
-#define SPOTLIGHT_H
+#pragma once
+
 #include <glm/vec3.hpp>
 
 #include "Shader.h"
@@ -48,5 +48,3 @@ public:
 		shader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(outerCutOff)));
 	}
 };
-
-#endif

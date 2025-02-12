@@ -1,5 +1,5 @@
-#ifndef POINTLIGHT_H
-#define POINTLIGHT_H
+#pragma once
+
 #include <glm/vec3.hpp>
 
 class PointLight
@@ -36,5 +36,3 @@ public:
 		shader.setFloat("pointLights[" + std::to_string(i) + "].quadratic", quadratic);
 	}
 };
-
-#endif

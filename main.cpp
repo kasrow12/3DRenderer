@@ -15,12 +15,9 @@
 #include "Source/Model.h"
 #include "Source/Camera.h"
 #include "Source/Shader.h"
-#include "Source/PointLight.h"
-#include "Source/SpotLight.h"
-#include "Source/DirLight.h"
+#include "Source/GameObject.h"
+#include "Source/Scene.h"
 #include "Source/Transform.h"
-
-class Scene;
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 void mouseCallback(GLFWwindow* window, double xpos, double ypos);
@@ -28,293 +25,14 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void updateWireFrame();
+void drawImGui();
 void setupScene(Scene& scene);
-
-int screenWidth = 1400;
-int screenHeight = 900;
 
 float deltaTime = 0.0f;
 double lastFrame = 0.0;
 
 bool wireFrame = false;
 bool captureMouse = false;
-bool useBlinn = true;
-float tessLevel = 32.0f;
-
-glm::vec3 spotDirection(-1.0f, -0.25f, 0.0f);
-
-class GameObject
-{
-public:
-    Model* model;
-    Transform transform;
-    std::string name;
-
-    // Movement parameters for train
-    bool isMoving = false;
-    // Radius of circular path
-    float radius = 15.0f;
-    float speed = 0.5f;
-    float currentAngle = 0.0f;
-
-    GameObject(Model* model, const Transform& transform, const std::string& name)
-        : model(model), transform(transform), name(name) {}
-
-    void update(float deltaTime)
-	{
-        if (isMoving)
-        {
-            // Update position in a circle
-            currentAngle += speed * deltaTime;
-            transform.position.x = radius * sin(currentAngle);
-            transform.position.z = radius * cos(currentAngle);
-
-            // Make the train face the direction of movement
-            transform.rotation.y = glm::degrees(atan2(-sin(currentAngle), -cos(currentAngle)));
-        }
-    }
-
-    void draw(Shader& shader) const
-	{
-        shader.setMat4("model", transform.getModelMatrix());
-        model->Draw(shader);
-    }
-};
-
-class Scene
-{
-public:
-    std::vector<std::unique_ptr<GameObject>> gameObjects;
-    std::vector<PointLight> pointLights;
-    SpotLight spotLight;
-    DirLight dirLight;
-	Model* sphereModel; // for point lights
-    float fogDistance = 60.0f;
-    bool isDayLight = true;
-
-    Camera camera = Camera({ 0.0f, 1.0f, 15.0f });
-    glm::vec3 skyColor = { 0.2f, 0.3f, 0.3f };
-
-    // Bezier
-    std::vector<glm::vec3> controlPoints = {
-        // Bottom row
-        glm::vec3(-1.0f, 0.5f, -1.0f),
-        glm::vec3(-0.33f, 0.0f, -1.0f),
-        glm::vec3(0.33f, 0.0f, -1.0f),
-        glm::vec3(1.0f, 0.0f, -1.0f),
-        // Second row
-        glm::vec3(-1.0f, 0.0f, -0.33f),
-        glm::vec3(-0.33f, 0.0f, -0.33f),
-        glm::vec3(0.33f, 0.0f, -0.33f),
-        glm::vec3(1.0f, 0.2f, -0.33f),
-        // Third row
-        glm::vec3(-1.0f, 0.0f, 0.33f),
-        glm::vec3(-0.33f, 0.0f, 0.33f),
-        glm::vec3(0.33f, 0.0f, 0.33f),
-        glm::vec3(1.0f, 0.0f, 0.33f),
-        // Top row
-        glm::vec3(-1.0f, -0.3f, 1.0f),
-        glm::vec3(-0.33f, 0.0f, 1.0f),
-        glm::vec3(0.33f, 0.0f, 1.0f),
-        glm::vec3(1.0f, 0.5f, 1.0f)
-    };
-	Transform bezierTransform;
-    float time = 0.0f;
-    float animationSpeed = 3.5f;
-    float animationAmplitude = 0.001f;
-
-    Scene() :
-        spotLight(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), 12.5f, 15.0f, 1.0f, 0.008f, 0.001f,
-            glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(1.0f)),
-        dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f))
-	{
-        generateLights();
-		bezierTransform.position = glm::vec3(3.0f, 1.0f, 10.0f);
-		bezierTransform.scale = glm::vec3(3);
-    }
-
-    void update(float deltaTime)
-	{
-		if (gameObjects.empty())
-			return;
-
-        gameObjects[0]->update(deltaTime);
-        updateSpotlight();
-        updateControlPoints(deltaTime);
-    }
-
-    void updateNight()
-    {
-        if (isDayLight)
-        {
-            skyColor = glm::vec3(0.2f, 0.3f, 0.3f);
-            dirLight.ambient = glm::vec3(0.05f);
-            dirLight.diffuse = glm::vec3(0.4f);
-            dirLight.specular = glm::vec3(0.5f);
-        }
-        else
-        {
-            skyColor = glm::vec3(0.0f, 0.0f, 0.0f);
-            dirLight.ambient = glm::vec3(0.05f);
-            dirLight.diffuse = glm::vec3(0.0f);
-            dirLight.specular = glm::vec3(0.0f);
-        }
-    }
-
-	void draw(Shader& shader, Shader& lightShader, Shader& tessellationShader)
-	{
-        glClearColor(skyColor.x, skyColor.y, skyColor.z, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        setupShaderUniforms(shader);
-        drawObjects(shader);
-		setupLightUniforms(lightShader);
-        drawLights(lightShader);
-		drawTessellated(tessellationShader);
-    }
-
-private:
-    void generateLights()
-	{
-        pointLights.clear();
-        pointLights.reserve(4);
-
-        const glm::vec3 ambient(0.05f);
-
-        std::vector<glm::vec3> positions = {
-            glm::vec3(0.7f, 3.2f, 10.0f),
-            glm::vec3(2.3f, 3.3f, -4.0f),
-            glm::vec3(-4.0f, 2.0f, -12.0f),
-            glm::vec3(0.0f, 0.7f, -3.0f)
-        };
-
-        std::vector<glm::vec3> colors = {
-            glm::vec3(0.1f, 0.8f, 0.2f),
-			glm::vec3(0.1f, 0.2f, 0.7f),
-			glm::vec3(0.8f, 0.1f, 0.1f),
-			glm::vec3(0.8f, 0.8f, 0.8f)
-        };
-
-		// Create 4 point lights (4 is also the number of point lights in the shader)
-		for (int i = 0; i < 4; i++)
-            pointLights.emplace_back(positions[i], 1.0f, 0.09f, 0.032f, ambient, colors[i], colors[i]);
-    }
-
-    void setupShaderUniforms(Shader& shader)
-	{
-        shader.use();
-        shader.setVec3("viewPos", camera.Position);
-        shader.setBool("blinn", useBlinn);
-		shader.setFloat("material.shininess", 32.0f); // no specular map
-
-        // Matrices
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
-            (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
-        shader.setMat4("projection", projection);
-        shader.setMat4("view", camera.getViewMatrix());
-
-        // Lights
-        dirLight.SetUniforms(shader);
-        for (size_t i = 0; i < pointLights.size(); i++)
-        {
-            pointLights[i].SetUniforms(shader, i);
-        }
-        spotLight.SetUniforms(shader);
-
-        // Fog
-        shader.setFloat("fogDistance", fogDistance);
-        shader.setVec3("skyColor", skyColor);
-    }
-
-	void setupLightUniforms(Shader& lightShader)
-    {
-        lightShader.use();
-        lightShader.setMat4("projection", glm::perspective(glm::radians(camera.Zoom),
-            (float)screenWidth / (float)screenHeight, 0.1f, 1000.0f));
-        lightShader.setMat4("view", camera.getViewMatrix());
-        lightShader.setVec3("viewPos", camera.Position);
-        lightShader.setFloat("fogDistance", fogDistance);
-        lightShader.setVec3("skyColor", skyColor);
-    }
-
-	// Spotlight fixed to first object (train)
-    void updateSpotlight()
-	{
-        static glm::vec3 localOffset(-9, 3.5f, 0.0f);
-
-		if (gameObjects.empty())
-			return;
-
-		const auto& transform = gameObjects[0]->transform;
-        glm::mat4 rotationMatrix = glm::mat4(1.0f);
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(transform.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(transform.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(transform.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-        spotLight.position = transform.position + glm::vec3(rotationMatrix * glm::vec4(localOffset, 1.0f));
-        spotLight.direction = glm::normalize(glm::vec3(rotationMatrix * glm::vec4(spotDirection, 0.0f)));
-    }
-
-    void updateControlPoints(float deltaTime)
-	{
-        time += deltaTime * animationSpeed;
-
-        for (size_t i = 0; i < controlPoints.size(); ++i) 
-        {
-            controlPoints[i].y += animationAmplitude * sin(time + i * 0.5f);
-        }
-    }
-
-	void drawObjects(Shader& shader) const
-    {
-        for (const auto& obj : gameObjects)
-        {
-			shader.setMat4("model", obj->transform.getModelMatrix());
-            obj->model->Draw(shader);
-        }
-    }
-
-	void drawLights(Shader& lightShader) const
-	{
-		for (const auto& light : pointLights)
-		{
-			glm::mat4 model = glm::translate(glm::mat4(1.0f), light.position);
-			model = glm::scale(model, glm::vec3(0.2f));
-			lightShader.setMat4("model", model);
-			lightShader.setVec3("lightColor", light.diffuse);
-			sphereModel->Draw(lightShader);
-		}
-	}
-
-    void drawTessellated(Shader& tessellationShader)
-    {
-		tessellationShader.use();
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
-			(float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
-		glm::mat4 view = camera.getViewMatrix();
-		tessellationShader.setMat4("projection", projection);
-		tessellationShader.setMat4("view", view);
-		tessellationShader.setMat4("model", bezierTransform.getModelMatrix());
-		tessellationShader.setVec3("viewPos", camera.Position);
-		tessellationShader.setFloat("tessLevel", tessLevel);
-		setupShaderUniforms(tessellationShader);
-
-        unsigned int vao, vbo;
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, controlPoints.size() * sizeof(glm::vec3), &controlPoints[0], GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
-        glEnableVertexAttribArray(0);
-        glBindVertexArray(0);
-
-		glBindVertexArray(vao);
-		glPatchParameteri(GL_PATCH_VERTICES, 16); // 16 control points
-		glDrawArrays(GL_PATCHES, 0, 16);
-		glBindVertexArray(0);
-    }
-};
 
 Scene scene;
 
@@ -325,7 +43,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
-    GLFWwindow* window = glfwCreateWindow(screenWidth, screenHeight, "3DRenderer", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(scene.screenWidth, scene.screenHeight, "3DRenderer", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -334,7 +52,7 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
-	glfwSetCursorPos(window, (float)screenWidth / 2, (float)screenHeight / 2);
+	glfwSetCursorPos(window, (float)scene.screenWidth / 2, (float)scene.screenHeight / 2);
 	glfwSetCursorPosCallback(window, mouseCallback);
 	glfwSetScrollCallback(window, scrollCallback);
 	glfwSetKeyCallback(window, keyCallback);
@@ -373,121 +91,7 @@ int main()
 		scene.update(deltaTime);
 		scene.draw(shader, lightShader, tessShader);
                
-        // --------- Render ImGui
-#pragma region ImGUI
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-		ImGui::Begin("Settings");
-        if (ImGui::Checkbox("Wireframe (F)", &wireFrame))
-        {
-            updateWireFrame();
-        }
-        ImGui::Checkbox("Blinn (B)", &useBlinn);
-        if (ImGui::Checkbox("Day/Night (N)", &scene.isDayLight))
-		{
-			scene.updateNight();
-		}
-
-        ImGui::SliderFloat("Fog Distance", &scene.fogDistance, 0.0f, 100.0f);
-        ImGui::ColorEdit3("Sky Color", &scene.skyColor.x);
-		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-
-        // Point Lights
-        if (ImGui::CollapsingHeader("Point Lights")) 
-        {
-            for (size_t i = 0; i < scene.pointLights.size(); i++) 
-            {
-                if (ImGui::TreeNode(("Point Light " + std::to_string(i + 1)).c_str()))
-                {
-                    ImGui::SliderFloat3(("Position##" + std::to_string(i)).c_str(), &scene.pointLights[i].position.x, -10.0f, 10.0f);
-                    ImGui::SliderFloat(("Constant##" + std::to_string(i)).c_str(), &scene.pointLights[i].constant, 0.0f, 1.0f);
-                    ImGui::SliderFloat(("Linear##" + std::to_string(i)).c_str(), &scene.pointLights[i].linear, 0.0f, 0.1f);
-                    ImGui::SliderFloat(("Quadratic##" + std::to_string(i)).c_str(), &scene.pointLights[i].quadratic, 0.0f, 0.1f);
-                    ImGui::ColorEdit3(("Ambient##" + std::to_string(i)).c_str(), &scene.pointLights[i].ambient.x);
-                    ImGui::ColorEdit3(("Diffuse##" + std::to_string(i)).c_str(), &scene.pointLights[i].diffuse.x);
-                    ImGui::ColorEdit3(("Specular##" + std::to_string(i)).c_str(), &scene.pointLights[i].specular.x);
-                    ImGui::TreePop();
-                }
-            }
-        }
-
-        if (ImGui::CollapsingHeader("Directional Light"))
-        {
-            ImGui::SliderFloat3("Direction##", &scene.dirLight.direction.x, -10.0f, 10.0f);
-            ImGui::ColorEdit3("Ambient##", &scene.dirLight.ambient.x);
-            ImGui::ColorEdit3("Diffuse##", &scene.dirLight.diffuse.x);
-            ImGui::ColorEdit3("Specular##", &scene.dirLight.specular.x);
-        }
-
-        if (ImGui::CollapsingHeader("Train Spot Light"))
-        {
-            ImGui::SliderFloat3("Train light direction", &spotDirection.x, -1.0f, 1.0f);
-            ImGui::SliderFloat("Cut Off", &scene.spotLight.cutOff, 0.0f, 90.0f);
-            ImGui::SliderFloat("Outer Cut Off", &scene.spotLight.outerCutOff, 0.0f, 90.0f);
-            ImGui::SliderFloat("Constant", &scene.spotLight.constant, 0.0f, 1.0f);
-            ImGui::SliderFloat("Linear", &scene.spotLight.linear, 0.0f, 0.1f);
-            ImGui::SliderFloat("Quadratic", &scene.spotLight.quadratic, 0.0f, 0.1f);
-            ImGui::ColorEdit3("Ambient", &scene.spotLight.ambient.x);
-            ImGui::ColorEdit3("Diffuse", &scene.spotLight.diffuse.x);
-            ImGui::ColorEdit3("Specular", &scene.spotLight.specular.x);
-        }
-
-        if (ImGui::CollapsingHeader("Objects"))
-        {
-            for (auto& obj : scene.gameObjects) 
-            {
-                if (ImGui::TreeNode(obj->name.c_str()))
-                {
-                    ImGui::SliderFloat3("Position", &obj->transform.position.x, -20.0f, 20.0f);
-                    ImGui::SliderFloat3("Rotation", &obj->transform.rotation.x, 0.0f, 360.0f);
-                    ImGui::SliderFloat3("Scale", &obj->transform.scale.x, 0.1f, 20.0f);
-                    ImGui::TreePop();
-                }
-            }
-        }
-
-		// Train movement
-		if (!scene.gameObjects.empty())
-		{
-			ImGui::Text("Train Movement");
-			ImGui::Checkbox("Enable Movement", &scene.gameObjects[0]->isMoving);
-			ImGui::SliderFloat("Movement Radius", &scene.gameObjects[0]->radius, 1.0f, 50.0f);
-			ImGui::SliderFloat("Movement Speed", &scene.gameObjects[0]->speed, 0.1f, 2.0f);
-		}
-
-        if (ImGui::CollapsingHeader("Bezier Patch"))
-        {
-            ImGui::SliderFloat3("Position##Bezier", &scene.bezierTransform.position.x, -20.0f, 20.0f);
-            ImGui::SliderFloat3("Rotation##Bezier", &scene.bezierTransform.rotation.x, 0.0f, 360.0f);
-            ImGui::SliderFloat3("Scale##Bezier", &scene.bezierTransform.scale.x, 0.1f, 20.0f);
-        }
-
-		ImGui::SliderFloat("Tessellation Level", &tessLevel, 1.0f, 64.0f);
-
-        ImGui::End();
-
-		ImGui::Begin("Controls");
-        ImGui::Text("[1] - Static camera");
-		ImGui::Text("[2] - Static tracking camera");
-		ImGui::Text("[3] - Train camera");
-		ImGui::Text("[4] - Free camera");
-        ImGui::Text("Camera Controls:");
-        ImGui::Text("WASD - Move Camera");
-        ImGui::Text("Space - Move Up");
-        ImGui::Text("Left Shift - Move Down");
-        ImGui::Text("Left Control - Capture Mouse");
-        ImGui::Text("Scroll - Zoom");
-		ImGui::Text("F - Toggle Wireframe");
-		ImGui::Text("B - Toggle Blinn-Phong");
-		ImGui::Text("N - Toggle Day/Night");
-		ImGui::Text("ESC - Exit");
-		ImGui::End();
-
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-#pragma endregion
+		drawImGui();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -519,8 +123,8 @@ void processInput(GLFWwindow* window)
 
 void mouseCallback(GLFWwindow* window, double xpos, double ypos)
 {
-    static double lastX = (float)screenWidth / 2;
-    static double lastY = (float)screenHeight / 2;
+    static double lastX = (float)scene.screenWidth / 2;
+    static double lastY = (float)scene.screenHeight / 2;
     static bool firstMouse = true;
 
 	if (!captureMouse)
@@ -555,8 +159,8 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
-	screenWidth = width;
-	screenHeight = height;
+    scene.screenWidth = width;
+    scene.screenHeight = height;
 	glViewport(0, 0, width, height);
 }
 
@@ -569,7 +173,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	}
 	if (key == GLFW_KEY_B && action == GLFW_PRESS)
 	{
-		useBlinn = !useBlinn;
+        scene.useBlinn = !scene.useBlinn;
 	}
 	if (key == GLFW_KEY_N && action == GLFW_PRESS)
 	{
@@ -641,4 +245,120 @@ void setupScene(Scene& scene)
     Transform trex3Transform;
     trex3Transform.position = glm::vec3(-40.0f, -0.05f, 7.0f);
     scene.gameObjects.push_back(std::make_unique<GameObject>(trexModel, trex3Transform, "T-rex3"));
+}
+
+void drawImGui()
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::Begin("Settings");
+    if (ImGui::Checkbox("Wireframe (F)", &wireFrame))
+    {
+        updateWireFrame();
+    }
+    ImGui::Checkbox("Blinn (B)", &scene.useBlinn);
+    if (ImGui::Checkbox("Day/Night (N)", &scene.isDayLight))
+    {
+        scene.updateNight();
+    }
+
+    ImGui::SliderFloat("Fog Distance", &scene.fogDistance, 0.0f, 100.0f);
+    ImGui::ColorEdit3("Sky Color", &scene.skyColor.x);
+    ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+
+    // Point Lights
+    if (ImGui::CollapsingHeader("Point Lights"))
+    {
+        for (size_t i = 0; i < scene.pointLights.size(); i++)
+        {
+            if (ImGui::TreeNode(("Point Light " + std::to_string(i + 1)).c_str()))
+            {
+                ImGui::SliderFloat3(("Position##" + std::to_string(i)).c_str(), &scene.pointLights[i].position.x, -10.0f, 10.0f);
+                ImGui::SliderFloat(("Constant##" + std::to_string(i)).c_str(), &scene.pointLights[i].constant, 0.0f, 1.0f);
+                ImGui::SliderFloat(("Linear##" + std::to_string(i)).c_str(), &scene.pointLights[i].linear, 0.0f, 0.1f);
+                ImGui::SliderFloat(("Quadratic##" + std::to_string(i)).c_str(), &scene.pointLights[i].quadratic, 0.0f, 0.1f);
+                ImGui::ColorEdit3(("Ambient##" + std::to_string(i)).c_str(), &scene.pointLights[i].ambient.x);
+                ImGui::ColorEdit3(("Diffuse##" + std::to_string(i)).c_str(), &scene.pointLights[i].diffuse.x);
+                ImGui::ColorEdit3(("Specular##" + std::to_string(i)).c_str(), &scene.pointLights[i].specular.x);
+                ImGui::TreePop();
+            }
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Directional Light"))
+    {
+        ImGui::SliderFloat3("Direction##", &scene.dirLight.direction.x, -10.0f, 10.0f);
+        ImGui::ColorEdit3("Ambient##", &scene.dirLight.ambient.x);
+        ImGui::ColorEdit3("Diffuse##", &scene.dirLight.diffuse.x);
+        ImGui::ColorEdit3("Specular##", &scene.dirLight.specular.x);
+    }
+
+    if (ImGui::CollapsingHeader("Train Spot Light"))
+    {
+        ImGui::SliderFloat3("Train light direction", &scene.trainLightDirection.x, -1.0f, 1.0f);
+        ImGui::SliderFloat("Cut Off", &scene.spotLight.cutOff, 0.0f, 90.0f);
+        ImGui::SliderFloat("Outer Cut Off", &scene.spotLight.outerCutOff, 0.0f, 90.0f);
+        ImGui::SliderFloat("Constant", &scene.spotLight.constant, 0.0f, 1.0f);
+        ImGui::SliderFloat("Linear", &scene.spotLight.linear, 0.0f, 0.1f);
+        ImGui::SliderFloat("Quadratic", &scene.spotLight.quadratic, 0.0f, 0.1f);
+        ImGui::ColorEdit3("Ambient", &scene.spotLight.ambient.x);
+        ImGui::ColorEdit3("Diffuse", &scene.spotLight.diffuse.x);
+        ImGui::ColorEdit3("Specular", &scene.spotLight.specular.x);
+    }
+
+    if (ImGui::CollapsingHeader("Objects"))
+    {
+        for (auto& obj : scene.gameObjects)
+        {
+            if (ImGui::TreeNode(obj->name.c_str()))
+            {
+                ImGui::SliderFloat3("Position", &obj->transform.position.x, -20.0f, 20.0f);
+                ImGui::SliderFloat3("Rotation", &obj->transform.rotation.x, 0.0f, 360.0f);
+                ImGui::SliderFloat3("Scale", &obj->transform.scale.x, 0.1f, 20.0f);
+                ImGui::TreePop();
+            }
+        }
+    }
+
+    // Train movement
+    if (!scene.gameObjects.empty())
+    {
+        ImGui::Text("Train Movement");
+        ImGui::Checkbox("Enable Movement", &scene.gameObjects[0]->isMoving);
+        ImGui::SliderFloat("Movement Radius", &scene.gameObjects[0]->radius, 1.0f, 50.0f);
+        ImGui::SliderFloat("Movement Speed", &scene.gameObjects[0]->speed, 0.1f, 2.0f);
+    }
+
+    if (ImGui::CollapsingHeader("Bezier Patch"))
+    {
+        ImGui::SliderFloat3("Position##Bezier", &scene.bezierTransform.position.x, -20.0f, 20.0f);
+        ImGui::SliderFloat3("Rotation##Bezier", &scene.bezierTransform.rotation.x, 0.0f, 360.0f);
+        ImGui::SliderFloat3("Scale##Bezier", &scene.bezierTransform.scale.x, 0.1f, 20.0f);
+    }
+
+    ImGui::SliderFloat("Tessellation Level", &scene.tessLevel, 1.0f, 64.0f);
+
+    ImGui::End();
+
+    ImGui::Begin("Controls");
+    ImGui::Text("[1] - Static camera");
+    ImGui::Text("[2] - Static tracking camera");
+    ImGui::Text("[3] - Train camera");
+    ImGui::Text("[4] - Free camera");
+    ImGui::Text("Camera Controls:");
+    ImGui::Text("WASD - Move Camera");
+    ImGui::Text("Space - Move Up");
+    ImGui::Text("Left Shift - Move Down");
+    ImGui::Text("Left Control - Capture Mouse");
+    ImGui::Text("Scroll - Zoom");
+    ImGui::Text("F - Toggle Wireframe");
+    ImGui::Text("B - Toggle Blinn-Phong");
+    ImGui::Text("N - Toggle Day/Night");
+    ImGui::Text("ESC - Exit");
+    ImGui::End();
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

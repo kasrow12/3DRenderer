@@ -1,8 +1,6 @@
-#ifndef MODEL_H
-#define MODEL_H
+#pragma once
 
 // https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/model.h
-
 #include <glad/glad.h> 
 
 #include <glm/glm.hpp>
@@ -243,4 +241,3 @@ unsigned int TextureFromFile(const char *path, const std::string &directory)
 
     return textureID;
 }
-#endif
