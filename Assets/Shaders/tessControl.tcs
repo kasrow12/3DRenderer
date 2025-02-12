@@ -1,18 +1,18 @@
 #version 400
-
 layout(vertices = 16) out;
 
 in vec3 FragPos[];
-out vec3 FragPos_TC[];
+
+out vec3 tcFragPos[];
 
 uniform float tessLevel = 32.0;
 
 void main()
 {
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
-    FragPos_TC[gl_InvocationID] = FragPos[gl_InvocationID];
+    tcFragPos[gl_InvocationID] = FragPos[gl_InvocationID];
     
-    if (gl_InvocationID == 0)
+    if (gl_InvocationID == 0) 
     {
         gl_TessLevelOuter[0] = tessLevel;
         gl_TessLevelOuter[1] = tessLevel;

@@ -103,12 +103,38 @@ public:
         {2.0f, 0.5f, -1.0f}, {1.0f, -0.0f, -1.0f}, {0.0f, -0.5f, -1.0f}, {-1.0f, -1.0f, -1.0f},
     };*/
 
-    std::vector<glm::vec3> controlPoints = {
+    /*std::vector<glm::vec3> controlPoints = {
     {-1.0f, 1.0f, -1.0f}, {0.0f, 0.5f, -1.0f}, {1.0f, 0.0f, -1.0f}, {2.0f, -0.5f, -1.0f},
     {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {2.0f, 0.5f, 0.0f},
     {-1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, -0.5f, 1.0f}, {2.0f, 0.0f, 1.0f},
     {-1.0f, 0.5f, 2.0f}, {0.0f, 0.0f, 2.0f}, {1.0f, 0.0f, 2.0f}, {2.0f, 0.0f, 2.0f}
+    };*/
+    std::vector<glm::vec3> controlPoints = {
+        // Bottom row
+        glm::vec3(-1.0f, 1.0f, -1.0f),
+        glm::vec3(-0.33f, 0.0f, -1.0f),
+        glm::vec3(0.33f, 0.0f, -1.0f),
+        glm::vec3(1.0f, 0.0f, -1.0f),
+
+        // Second row
+        glm::vec3(-1.0f, 0.0f, -0.33f),
+        glm::vec3(-0.33f, 0.0f, -0.33f),
+        glm::vec3(0.33f, 0.0f, -0.33f),
+        glm::vec3(1.0f, 0.5f, -0.33f),
+
+        // Third row
+        glm::vec3(-1.0f, 0.0f, 0.33f),
+        glm::vec3(-0.33f, 0.0f, 0.33f),
+        glm::vec3(0.33f, 0.0f, 0.33f),
+        glm::vec3(1.0f, 0.0f, 0.33f),
+
+        // Top row
+        glm::vec3(-1.0f, -0.5f, 1.0f),
+        glm::vec3(-0.33f, 0.0f, 1.0f),
+        glm::vec3(0.33f, 0.0f, 1.0f),
+        glm::vec3(1.0f, 1.0f, 1.0f)
     };
+
 	Transform bezierTransform;
 
 	Camera camera = Camera(glm::vec3(0.0f, 1.0f, 15.0f));
