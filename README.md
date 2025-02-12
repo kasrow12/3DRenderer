@@ -22,7 +22,13 @@ Potok renderowania z teselacj¹ wygl¹da nastêpuj¹co:
 
 W aplikacji u¿ytkownik mo¿e zmieniæ rozdzielczoœæ powierzchni Beziera w menu. Aby lepiej uwidoczniæ efekt, mo¿na w³¹czyæ tryb wyœwietlania siatki (klawisz `F`).
 
-[ród³o](https://learnopengl.com/Advanced-OpenGL/Tessellation)
+Aby w³¹czyæ teselacjê nale¿a³o wywo³aæ funkcjê 
+```glPatchParameteri(GL_PATCH_VERTICES, 16);```
+, dziêki czemu OpenGL wie, ¿e p³at wejœciowy bêdzie siê sk³adaæ z 16 wierzcho³ków.
+
+Nastêpnie skoro mamy tylko jeden p³at, to wyœwietlenie jego mo¿na zrealizowaæ poprzez
+```glDrawArrays(GL_PATCHES, 0, 16);```.
+
 
 ## Zmiana sk³adowej zwierciadlanej Phong/Blinn
 We [fragment shaderze](Assets/Shaders/fragment.fs) u¿yta sk³adowa zwierciadlana (Phonga/Blinn) zale¿y od uniformu `blinn`.
