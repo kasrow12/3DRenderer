@@ -1,6 +1,7 @@
 # 3DRenderer
 ## Instalacja
-```git clone --recursive https://github.com/kasrow12/3DRenderer.git
+```
+git clone --recursive https://github.com/kasrow12/3DRenderer.git
 cd 3DRenderer
 cmake -S . -B build -G "Visual Studio 17 2022"
 cmake --build build --config Release && build\Release\My3DRenderer.exe
@@ -8,9 +9,10 @@ cmake --build build --config Release && build\Release\My3DRenderer.exe
 
 ## Flaga na wietrze (p³at Beziera) (Tessellation Shader)
 Dziêki zastosowaniu shaderów teselacji, mo¿liwe jest wygenerowanie dodatkowych wierzcho³ków, które pozwalaj¹ na zwiêkszenie rozdzielczoœci powierzchni.
+
 Do teselacji potrzebne nam s¹:
-[Control Shader](Assets/Shaders/control.tcs) - kontroluje iloœæ generowanych wierzcho³ków, parametr tessLevel okreœla iloœæ generowanych dodatkowych wierzcho³ków na krawêdŸ
-[Evaluation Shader](Assets/Shaders/evaluation.tes) - oblicza pozycje nowych wierzcho³ków i wylicza wartoœci powierzchni Beziera
+- [Control Shader](Assets/Shaders/control.tcs) - kontroluje iloœæ generowanych wierzcho³ków, parametr tessLevel okreœla iloœæ generowanych dodatkowych wierzcho³ków na krawêdŸ
+- [Evaluation Shader](Assets/Shaders/evaluation.tes) - oblicza pozycje nowych wierzcho³ków i wylicza wartoœci powierzchni Beziera
 
 ## Zmiana sk³adowej zwierciadlanej Phong/Blinn
 We fragment shaderze (`Assets/Shaders/fragment.fs`) mo¿na zmieniæ sk³adow¹ zwierciadlan¹ z Phonga na Blinna, korzystaj¹c z uniforma `blinn`.
