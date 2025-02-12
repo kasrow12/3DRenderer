@@ -21,8 +21,8 @@ Potok renderowania z teselacj¹ wygl¹da nastêpuj¹co:
 4. Fragment Shader
 
 ## Zmiana sk³adowej zwierciadlanej Phong/Blinn
-We [fragment shaderze](`Assets/Shaders/fragment.fs`) mo¿na zmieniæ sk³adow¹ zwierciadlan¹ z Phonga na Blinna, korzystaj¹c z uniforma `blinn`.
-W aplikacji mo¿na zmieniaæ wartoœæ zmiennej `blinn` za pomoc¹ klawisza `B`.
+We [fragment shaderze](`Assets/Shaders/fragment.fs) u¿yta sk³adowa zwierciadlana (Phonga/Blinn) zale¿y od uniformu `blinn`.
+W aplikacji mo¿na zmieniaæ wartoœæ tej zmiennej, tym samym sk³adowej zwierciadlanej za pomoc¹ klawisza `B`.
 [ród³o](https://learnopengl.com/Advanced-Lighting/Advanced-Lighting)
 ```glsl
 float spec = 0.0;
