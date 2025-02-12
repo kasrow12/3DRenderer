@@ -88,7 +88,6 @@ public:
             Position = cameraPos;
 
 			return glm::lookAt(Position, Position + direction, WorldUp);
-
 	    case FREE:
 	    default:
 			return glm::lookAt(Position, Position + Front, Up);

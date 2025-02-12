@@ -47,8 +47,6 @@ glm::vec3 skyColor(0.2f, 0.3f, 0.3f);
 
 glm::vec3 spotDirection(-1.0f, -0.25f, 0.0f);
 
-
-
 class GameObject
 {
 public:
@@ -97,6 +95,22 @@ public:
 	Model* sphereModel;
     float fogDistance = 60.0f;
 
+    // Bezier
+    /*std::vector<glm::vec3> controlPoints = {
+        {2.0f, 0.0f, 2.0f},  {1.0f, 0.0f, 2.0f},   {0.0f, 0.0f, 2.0f},   {-1.0f, -0.5f, 2.0f},
+        {2.0f, 0.0f, 1.0f},  {1.0f, 0.5f, 1.0f},   {0.0f, 0.0f, 1.0f},   {-1.0f, 0.0f, 1.0f},
+        {2.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f},   {0.0f, 0.0f, 0.0f},   {-1.0f, 0.0f, 0.0f},
+        {2.0f, 0.5f, -1.0f}, {1.0f, -0.0f, -1.0f}, {0.0f, -0.5f, -1.0f}, {-1.0f, -1.0f, -1.0f},
+    };*/
+
+    std::vector<glm::vec3> controlPoints = {
+    {-1.0f, 1.0f, -1.0f}, {0.0f, 0.5f, -1.0f}, {1.0f, 0.0f, -1.0f}, {2.0f, -0.5f, -1.0f},
+    {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {2.0f, 0.5f, 0.0f},
+    {-1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, -0.5f, 1.0f}, {2.0f, 0.0f, 1.0f},
+    {-1.0f, 0.5f, 2.0f}, {0.0f, 0.0f, 2.0f}, {1.0f, 0.0f, 2.0f}, {2.0f, 0.0f, 2.0f}
+    };
+	Transform bezierTransform;
+
 	Camera camera = Camera(glm::vec3(0.0f, 1.0f, 15.0f));
 
     Scene() :
@@ -105,6 +119,7 @@ public:
         dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f))
 	{
         generateLights();
+		bezierTransform.scale = glm::vec3(3);
     }
 
     void update(float deltaTime)
@@ -116,12 +131,13 @@ public:
         updateSpotlight();
     }
 
-    void draw(Shader& shader, Shader& lightShader)
+	void draw(Shader& shader, Shader& lightShader, Shader& tessellationShader)
 	{
         setupShaderUniforms(shader);
         drawObjects(shader);
 		setupLightUniforms(lightShader);
         drawLights(lightShader);
+		drawTessellated(tessellationShader);
     }
 
 private:
@@ -130,9 +146,7 @@ private:
         pointLights.clear();
         pointLights.reserve(4);
 
-        const float intensity = 0.8f;
         const glm::vec3 ambient(0.05f);
-        const glm::vec3 specular(1.0f);
 
         std::vector<glm::vec3> positions = {
             glm::vec3(0.7f, 0.2f, 10.0f),
@@ -228,6 +242,34 @@ private:
 			sphereModel->Draw(lightShader);
 		}
 	}
+
+    void drawTessellated(Shader& tessellationShader)
+    {
+		tessellationShader.use();
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
+			(float)screenWidth / (float)screenHeight, 0.1f, 1000.0f);
+		glm::mat4 view = camera.getViewMatrix();
+		tessellationShader.setMat4("projection", projection);
+		tessellationShader.setMat4("view", view);
+		tessellationShader.setMat4("model", bezierTransform.getModelMatrix());
+		tessellationShader.setVec3("viewPos", camera.Position);
+		setupShaderUniforms(tessellationShader);
+
+        unsigned int vao, vbo;
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, controlPoints.size() * sizeof(glm::vec3), &controlPoints[0], GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+        glEnableVertexAttribArray(0);
+        glBindVertexArray(0);
+
+		glBindVertexArray(vao);
+		glPatchParameteri(GL_PATCH_VERTICES, 16); // 16 control points
+		glDrawArrays(GL_PATCHES, 0, 16);
+		glBindVertexArray(0);
+    }
 };
 
 Scene scene;
@@ -235,8 +277,8 @@ Scene scene;
 int main()
 {
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
     GLFWwindow* window = glfwCreateWindow(screenWidth, screenHeight, "3DRenderer", NULL, NULL);
@@ -272,6 +314,7 @@ int main()
 
     Shader shader("Assets/Shaders/vertex.vs", "Assets/Shaders/fragment.fs");
     Shader lightShader("Assets/Shaders/vertex.vs", "Assets/Shaders/lightFragment.fs");
+	Shader tessShader("Assets/Shaders/vertex.vs", "Assets/Shaders/fragment.fs", "Assets/Shaders/tessControl.tcs", "Assets/Shaders/tessEval.tes");
 
 	setupScene(scene);
 
@@ -287,8 +330,8 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		scene.update(deltaTime);
-		scene.draw(shader, lightShader);
-        
+		scene.draw(shader, lightShader, tessShader);
+               
 		// --------- Render ImGui
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -372,6 +415,14 @@ int main()
 			ImGui::SliderFloat("Movement Radius", &scene.gameObjects[0]->radius, 1.0f, 50.0f);
 			ImGui::SliderFloat("Movement Speed", &scene.gameObjects[0]->speed, 0.1f, 2.0f);
 		}
+
+        if (ImGui::CollapsingHeader("Bezier Patch"))
+        {
+            ImGui::SliderFloat3("Position##Bezier", &scene.bezierTransform.position.x, -20.0f, 20.0f);
+            ImGui::SliderFloat3("Rotation##Bezier", &scene.bezierTransform.rotation.x, 0.0f, 360.0f);
+            ImGui::SliderFloat3("Scale##Bezier", &scene.bezierTransform.scale.x, 0.1f, 20.0f);
+        }
+
         ImGui::End();
 
 		ImGui::Begin("Controls");
