@@ -28,7 +28,6 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void updateWireFrame();
-void updateNight();
 void setupScene(Scene& scene);
 
 int screenWidth = 1400;
@@ -39,11 +38,8 @@ double lastFrame = 0.0;
 
 bool wireFrame = false;
 bool captureMouse = false;
-bool useBlinn = false;
-bool isDayLight = true;
-
-
-glm::vec3 skyColor(0.2f, 0.3f, 0.3f);
+bool useBlinn = true;
+float tessLevel = 32.0f;
 
 glm::vec3 spotDirection(-1.0f, -0.25f, 0.0f);
 
@@ -92,52 +88,40 @@ public:
     std::vector<PointLight> pointLights;
     SpotLight spotLight;
     DirLight dirLight;
-	Model* sphereModel;
+	Model* sphereModel; // for point lights
     float fogDistance = 60.0f;
+    bool isDayLight = true;
+
+    Camera camera = Camera({ 0.0f, 1.0f, 15.0f });
+    glm::vec3 skyColor = { 0.2f, 0.3f, 0.3f };
 
     // Bezier
-    /*std::vector<glm::vec3> controlPoints = {
-        {2.0f, 0.0f, 2.0f},  {1.0f, 0.0f, 2.0f},   {0.0f, 0.0f, 2.0f},   {-1.0f, -0.5f, 2.0f},
-        {2.0f, 0.0f, 1.0f},  {1.0f, 0.5f, 1.0f},   {0.0f, 0.0f, 1.0f},   {-1.0f, 0.0f, 1.0f},
-        {2.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f},   {0.0f, 0.0f, 0.0f},   {-1.0f, 0.0f, 0.0f},
-        {2.0f, 0.5f, -1.0f}, {1.0f, -0.0f, -1.0f}, {0.0f, -0.5f, -1.0f}, {-1.0f, -1.0f, -1.0f},
-    };*/
-
-    /*std::vector<glm::vec3> controlPoints = {
-    {-1.0f, 1.0f, -1.0f}, {0.0f, 0.5f, -1.0f}, {1.0f, 0.0f, -1.0f}, {2.0f, -0.5f, -1.0f},
-    {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {2.0f, 0.5f, 0.0f},
-    {-1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, -0.5f, 1.0f}, {2.0f, 0.0f, 1.0f},
-    {-1.0f, 0.5f, 2.0f}, {0.0f, 0.0f, 2.0f}, {1.0f, 0.0f, 2.0f}, {2.0f, 0.0f, 2.0f}
-    };*/
     std::vector<glm::vec3> controlPoints = {
         // Bottom row
-        glm::vec3(-1.0f, 1.0f, -1.0f),
+        glm::vec3(-1.0f, 0.5f, -1.0f),
         glm::vec3(-0.33f, 0.0f, -1.0f),
         glm::vec3(0.33f, 0.0f, -1.0f),
         glm::vec3(1.0f, 0.0f, -1.0f),
-
         // Second row
         glm::vec3(-1.0f, 0.0f, -0.33f),
         glm::vec3(-0.33f, 0.0f, -0.33f),
         glm::vec3(0.33f, 0.0f, -0.33f),
-        glm::vec3(1.0f, 0.5f, -0.33f),
-
+        glm::vec3(1.0f, 0.2f, -0.33f),
         // Third row
         glm::vec3(-1.0f, 0.0f, 0.33f),
         glm::vec3(-0.33f, 0.0f, 0.33f),
         glm::vec3(0.33f, 0.0f, 0.33f),
         glm::vec3(1.0f, 0.0f, 0.33f),
-
         // Top row
-        glm::vec3(-1.0f, -0.5f, 1.0f),
+        glm::vec3(-1.0f, -0.3f, 1.0f),
         glm::vec3(-0.33f, 0.0f, 1.0f),
         glm::vec3(0.33f, 0.0f, 1.0f),
-        glm::vec3(1.0f, 1.0f, 1.0f)
+        glm::vec3(1.0f, 0.5f, 1.0f)
     };
-
 	Transform bezierTransform;
-
-	Camera camera = Camera(glm::vec3(0.0f, 1.0f, 15.0f));
+    float time = 0.0f;
+    float animationSpeed = 3.5f;
+    float animationAmplitude = 0.001f;
 
     Scene() :
         spotLight(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), 12.5f, 15.0f, 1.0f, 0.008f, 0.001f,
@@ -145,6 +129,7 @@ public:
         dirLight(glm::vec3(-0.2f, -1.0f, -0.3f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f))
 	{
         generateLights();
+		bezierTransform.position = glm::vec3(3.0f, 1.0f, 10.0f);
 		bezierTransform.scale = glm::vec3(3);
     }
 
@@ -155,10 +140,32 @@ public:
 
         gameObjects[0]->update(deltaTime);
         updateSpotlight();
+        updateControlPoints(deltaTime);
+    }
+
+    void updateNight()
+    {
+        if (isDayLight)
+        {
+            skyColor = glm::vec3(0.2f, 0.3f, 0.3f);
+            dirLight.ambient = glm::vec3(0.05f);
+            dirLight.diffuse = glm::vec3(0.4f);
+            dirLight.specular = glm::vec3(0.5f);
+        }
+        else
+        {
+            skyColor = glm::vec3(0.0f, 0.0f, 0.0f);
+            dirLight.ambient = glm::vec3(0.05f);
+            dirLight.diffuse = glm::vec3(0.0f);
+            dirLight.specular = glm::vec3(0.0f);
+        }
     }
 
 	void draw(Shader& shader, Shader& lightShader, Shader& tessellationShader)
 	{
+        glClearColor(skyColor.x, skyColor.y, skyColor.z, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         setupShaderUniforms(shader);
         drawObjects(shader);
 		setupLightUniforms(lightShader);
@@ -175,7 +182,7 @@ private:
         const glm::vec3 ambient(0.05f);
 
         std::vector<glm::vec3> positions = {
-            glm::vec3(0.7f, 0.2f, 10.0f),
+            glm::vec3(0.7f, 3.2f, 10.0f),
             glm::vec3(2.3f, 3.3f, -4.0f),
             glm::vec3(-4.0f, 2.0f, -12.0f),
             glm::vec3(0.0f, 0.7f, -3.0f)
@@ -248,6 +255,16 @@ private:
         spotLight.direction = glm::normalize(glm::vec3(rotationMatrix * glm::vec4(spotDirection, 0.0f)));
     }
 
+    void updateControlPoints(float deltaTime)
+	{
+        time += deltaTime * animationSpeed;
+
+        for (size_t i = 0; i < controlPoints.size(); ++i) 
+        {
+            controlPoints[i].y += animationAmplitude * sin(time + i * 0.5f);
+        }
+    }
+
 	void drawObjects(Shader& shader) const
     {
         for (const auto& obj : gameObjects)
@@ -279,6 +296,7 @@ private:
 		tessellationShader.setMat4("view", view);
 		tessellationShader.setMat4("model", bezierTransform.getModelMatrix());
 		tessellationShader.setVec3("viewPos", camera.Position);
+		tessellationShader.setFloat("tessLevel", tessLevel);
 		setupShaderUniforms(tessellationShader);
 
         unsigned int vao, vbo;
@@ -352,9 +370,6 @@ int main()
 
         processInput(window);
 
-        glClearColor(skyColor.x, skyColor.y, skyColor.z, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 		scene.update(deltaTime);
 		scene.draw(shader, lightShader, tessShader);
                
@@ -369,13 +384,13 @@ int main()
             updateWireFrame();
         }
         ImGui::Checkbox("Blinn (B)", &useBlinn);
-        if (ImGui::Checkbox("Day/Night (N)", &isDayLight))
+        if (ImGui::Checkbox("Day/Night (N)", &scene.isDayLight))
 		{
-			updateNight();
+			scene.updateNight();
 		}
 
         ImGui::SliderFloat("Fog Distance", &scene.fogDistance, 0.0f, 100.0f);
-        ImGui::ColorEdit3("Sky Color", &skyColor.x);
+        ImGui::ColorEdit3("Sky Color", &scene.skyColor.x);
 
 		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 
@@ -448,6 +463,8 @@ int main()
             ImGui::SliderFloat3("Rotation##Bezier", &scene.bezierTransform.rotation.x, 0.0f, 360.0f);
             ImGui::SliderFloat3("Scale##Bezier", &scene.bezierTransform.scale.x, 0.1f, 20.0f);
         }
+
+		ImGui::SliderFloat("Tessellation Level", &tessLevel, 1.0f, 64.0f);
 
         ImGui::End();
 
@@ -551,8 +568,8 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	}
 	if (key == GLFW_KEY_N && action == GLFW_PRESS)
 	{
-		isDayLight = !isDayLight;
-        updateNight();
+		scene.isDayLight = !scene.isDayLight;
+        scene.updateNight();
 	}
 
 	// Capture mouse on left control, cannot do this in processInput because this will be called only once
@@ -619,22 +636,4 @@ void setupScene(Scene& scene)
     Transform trex3Transform;
     trex3Transform.position = glm::vec3(-40.0f, -0.05f, 7.0f);
     scene.gameObjects.push_back(std::make_unique<GameObject>(trexModel, trex3Transform, "T-rex3"));
-}
-
-void updateNight()
-{
-	if (isDayLight)
-	{
-		skyColor = glm::vec3(0.2f, 0.3f, 0.3f);
-		scene.dirLight.ambient = glm::vec3(0.05f);
-		scene.dirLight.diffuse = glm::vec3(0.4f);
-		scene.dirLight.specular = glm::vec3(0.5f);
-	}
-	else
-	{
-		skyColor = glm::vec3(0.0f, 0.0f, 0.0f);
-		scene.dirLight.ambient = glm::vec3(0.05f);
-		scene.dirLight.diffuse = glm::vec3(0.0f);
-		scene.dirLight.specular = glm::vec3(0.0f);
-	}
 }

@@ -64,9 +64,6 @@ vec3 CalcFog(vec3 color);
 
 void main()
 {
-    //FragColor = vec4(FragPos, 1.0);
-    //return;
-
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
     
