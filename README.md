@@ -11,8 +11,14 @@ cmake --build build --config Release && build\Release\My3DRenderer.exe
 Dziêki zastosowaniu shaderów teselacji, mo¿liwe jest wygenerowanie dodatkowych wierzcho³ków, które pozwalaj¹ na zwiêkszenie rozdzielczoœci powierzchni.
 
 Do teselacji potrzebne nam s¹:
-- [Control Shader](Assets/Shaders/control.tcs) - kontroluje iloœæ generowanych wierzcho³ków, parametr tessLevel okreœla iloœæ generowanych dodatkowych wierzcho³ków na krawêdŸ
-- [Evaluation Shader](Assets/Shaders/evaluation.tes) - oblicza pozycje nowych wierzcho³ków i wylicza wartoœci powierzchni Beziera
+- [Control Shader](Assets/Shaders/tessControl.tcs) - kontroluje iloœæ generowanych wierzcho³ków, parametr tessLevel okreœla iloœæ generowanych dodatkowych wierzcho³ków na krawêdŸ
+- [Evaluation Shader](Assets/Shaders/tessEval.tes) - oblicza pozycje nowych wierzcho³ków i wylicza wartoœci powierzchni Beziera
+
+Potok renderowania z teselacj¹ wygl¹da nastêpuj¹co:
+1. Vertex Shader
+2. Tessellation Control Shader
+3. Tessellation Evaluation Shader
+4. Fragment Shader
 
 ## Zmiana sk³adowej zwierciadlanej Phong/Blinn
 We fragment shaderze (`Assets/Shaders/fragment.fs`) mo¿na zmieniæ sk³adow¹ zwierciadlan¹ z Phonga na Blinna, korzystaj¹c z uniforma `blinn`.
