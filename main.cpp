@@ -28,6 +28,7 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void updateWireFrame();
+void updateNight();
 void setupScene(Scene& scene);
 
 int screenWidth = 1400;
@@ -39,7 +40,7 @@ double lastFrame = 0.0;
 bool wireFrame = false;
 bool captureMouse = false;
 bool useBlinn = false;
-//bool isDayLight = true;
+bool isDayLight = true;
 
 
 glm::vec3 skyColor(0.2f, 0.3f, 0.3f);
@@ -293,18 +294,16 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Controls");
-		/*ImGui::Text("Camera Controls");
-		ImGui::Text("WASD - Move Camera");
-		ImGui::Text("Space - Move Up");
-		ImGui::Text("Left Shift - Move Down");
-		ImGui::Text("Control - Capture Mouse");
-		ImGui::Text("Scroll - Zoom");*/
+		ImGui::Begin("Settings");
         if (ImGui::Checkbox("Wireframe (F)", &wireFrame))
         {
             updateWireFrame();
         }
-		ImGui::Checkbox("Blinn (B)", &useBlinn);
+        ImGui::Checkbox("Blinn (B)", &useBlinn);
+        if (ImGui::Checkbox("Day/Night (N)", &isDayLight))
+		{
+			updateNight();
+		}
 
         ImGui::SliderFloat("Fog Distance", &scene.fogDistance, 0.0f, 100.0f);
         ImGui::ColorEdit3("Sky Color", &skyColor.x);
@@ -373,8 +372,20 @@ int main()
 			ImGui::SliderFloat("Movement Radius", &scene.gameObjects[0]->radius, 1.0f, 50.0f);
 			ImGui::SliderFloat("Movement Speed", &scene.gameObjects[0]->speed, 0.1f, 2.0f);
 		}
-
         ImGui::End();
+
+		ImGui::Begin("Controls");
+        ImGui::Text("[1] - Static camera");
+		ImGui::Text("[2] - Static tracking camera");
+		ImGui::Text("[3] - Train camera");
+		ImGui::Text("[4] - Free camera");
+        ImGui::Text("Camera Controls:");
+        ImGui::Text("WASD - Move Camera");
+        ImGui::Text("Space - Move Up");
+        ImGui::Text("Left Shift - Move Down");
+        ImGui::Text("Left Control - Capture Mouse");
+        ImGui::Text("Scroll - Zoom");
+		ImGui::End();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -461,6 +472,11 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	{
 		useBlinn = !useBlinn;
 	}
+	if (key == GLFW_KEY_N && action == GLFW_PRESS)
+	{
+		isDayLight = !isDayLight;
+        updateNight();
+	}
 
 	// Capture mouse on left control, cannot do this in processInput because this will be called only once
 	if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS)
@@ -526,5 +542,22 @@ void setupScene(Scene& scene)
     Transform trex3Transform;
     trex3Transform.position = glm::vec3(-40.0f, -0.05f, 7.0f);
     scene.gameObjects.push_back(std::make_unique<GameObject>(trexModel, trex3Transform, "T-rex3"));
+}
 
+void updateNight()
+{
+	if (isDayLight)
+	{
+		skyColor = glm::vec3(0.2f, 0.3f, 0.3f);
+		scene.dirLight.ambient = glm::vec3(0.05f);
+		scene.dirLight.diffuse = glm::vec3(0.4f);
+		scene.dirLight.specular = glm::vec3(0.5f);
+	}
+	else
+	{
+		skyColor = glm::vec3(0.0f, 0.0f, 0.0f);
+		scene.dirLight.ambient = glm::vec3(0.05f);
+		scene.dirLight.diffuse = glm::vec3(0.0f);
+		scene.dirLight.specular = glm::vec3(0.0f);
+	}
 }
