@@ -373,7 +373,8 @@ int main()
 		scene.update(deltaTime);
 		scene.draw(shader, lightShader, tessShader);
                
-		// --------- Render ImGui
+        // --------- Render ImGui
+#pragma region ImGUI
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -391,7 +392,6 @@ int main()
 
         ImGui::SliderFloat("Fog Distance", &scene.fogDistance, 0.0f, 100.0f);
         ImGui::ColorEdit3("Sky Color", &scene.skyColor.x);
-
 		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 
         // Point Lights
@@ -479,10 +479,15 @@ int main()
         ImGui::Text("Left Shift - Move Down");
         ImGui::Text("Left Control - Capture Mouse");
         ImGui::Text("Scroll - Zoom");
+		ImGui::Text("F - Toggle Wireframe");
+		ImGui::Text("B - Toggle Blinn-Phong");
+		ImGui::Text("N - Toggle Day/Night");
+		ImGui::Text("ESC - Exit");
 		ImGui::End();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+#pragma endregion
 
         glfwSwapBuffers(window);
         glfwPollEvents();

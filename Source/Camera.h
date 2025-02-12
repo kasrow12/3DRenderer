@@ -22,7 +22,7 @@ enum CameraMode {
     STATIC_SCENE,      // Static camera observing the scene
     STATIC_TRACKING,   // Static camera tracking moving object
     ATTACHED,          // Third person perspective
-    FREE              // Free camera
+    FREE               // Free camera
 };
 
 // Default camera values
@@ -33,7 +33,6 @@ const float SENSITIVITY = 0.1f;
 const float ZOOM = 45.0f;
 const float SCROLL_SENSITIVITY = 2.0f;
 
-// An abstract camera class that processes input and calculates the corresponding Euler Angles, Vectors and Matrices for use in OpenGL
 class Camera
 {
 public:
@@ -53,8 +52,9 @@ public:
     CameraMode CurrentMode;
     Transform* TargetTransform;
 
-    // constructor with vectors
-	Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH, CameraMode mode = FREE) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM), CurrentMode(mode)
+	Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
+        float yaw = YAW, float pitch = PITCH, CameraMode mode = FREE) : Front(glm::vec3(0.0f, 0.0f, -1.0f)),
+		MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM), CurrentMode(mode)
     {
         Position = position;
         WorldUp = up;
@@ -74,9 +74,8 @@ public:
 			return glm::lookAt(Position, glm::vec3(0.0f), Up);
 		case STATIC_TRACKING:
 			return glm::lookAt(Position, TargetTransform->position, WorldUp);
-	    	// third person perspective
 	    case ATTACHED:
-
+	    	// third person perspective
             glm::mat4 rotationMatrix = glm::mat4(1.0f);
             rotationMatrix = glm::rotate(rotationMatrix, glm::radians(TargetTransform->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
             rotationMatrix = glm::rotate(rotationMatrix, glm::radians(TargetTransform->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -146,7 +145,6 @@ public:
         updateCameraVectors();
     }
 
-    // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
     void processMouseScroll(float yoffset)
     {
         Zoom -= yoffset * SCROLL_SENSITIVITY;
