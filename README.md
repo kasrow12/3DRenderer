@@ -1,4 +1,30 @@
 # 3DRenderer
+Prosty renderer 3D napisany w C++ z wykorzystaniem OpenGL.
+
+## Technologie i Biblioteki
+- C++
+- OpenGL
+- GLAD
+- GLSL
+- GLFW
+- GLM
+- ImGui (Dear ImGui)
+- stb_image
+- CMake
+
+## GÅ‚Ã³wne FunkcjonalnoÅ›ci
+- **Åadowanie Modeli 3D:** ObsÅ‚uga Å‚adowania modeli z plikÃ³w (np. format `.obj` dla obiektÃ³w takich jak pociÄ…g, dinozaury, podÅ‚oÅ¼e).
+- **RÃ³Å¼ne tryby kamery:** statyczna obserwujÄ…ca scenÄ™, statyczna Å›ledzÄ…ca obiekt, przyczepiona do obiektu (np. pociÄ…gu), swobodna (free-look).
+- **OÅ›wietlenie:**
+    - Model oÅ›wietlenia Phong oraz Blinn-Phong (dynamicznie przeÅ‚Ä…czane).
+    - ÅšwiatÅ‚a punktowe
+    - ÅšwiatÅ‚o kierunkowe
+    - Reflektor (Spotlight) - Å›wiatÅ‚o czoÅ‚owe pociÄ…gu
+- **Efekt mgÅ‚y**
+- **GUI**
+- **Powierzchnie Beziera:**
+    - Renderowanie pÅ‚ata Beziera z wykorzystaniem shaderÃ³w teselacji, z moÅ¼liwoÅ›ciÄ… dynamicznej zmiany poziomu teselacji.
+
 ## Instalacja
 ```
 git clone --recursive https://github.com/kasrow12/3DRenderer.git
@@ -7,33 +33,56 @@ cmake -S . -B build -G "Visual Studio 17 2022"
 cmake --build build --config Release && build\Release\My3DRenderer.exe
 ```
 
-## Flaga na wietrze (p³at Beziera) (Tessellation Shader)
-Dziêki zastosowaniu shaderów teselacji, mo¿liwe jest wygenerowanie dodatkowych wierzcho³ków, które pozwalaj¹ na zwiêkszenie rozdzielczoœci powierzchni.
+## Zrzuty ekranu
+![3d](https://github.com/user-attachments/assets/6231b504-6243-40f5-ba53-e7f88d172f75)
+Widok siatki trÃ³jkÄ…tÃ³w
+![wireframe](https://github.com/user-attachments/assets/37ea9c5e-d8f6-453a-be9a-226deb4b2aaf)
+Efekt mgÅ‚y
+![fog](https://github.com/user-attachments/assets/cc41c48c-524d-420a-8727-8df494810f31)
 
-Do teselacji potrzebne nam s¹:
-- [Control Shader](Assets/Shaders/tessControl.tcs) - kontroluje iloœæ generowanych wierzcho³ków, parametr tessLevel okreœla iloœæ generowanych dodatkowych wierzcho³ków na krawêdŸ
-- [Evaluation Shader](Assets/Shaders/tessEval.tes) - oblicza pozycje nowych wierzcho³ków i wylicza wartoœci powierzchni Beziera
+## Sterowanie
+| Klawisz      | Akcja                             |
+|--------------|-----------------------------------|
+| 1            | Statyczna kamera                  |
+| 2            | ÅšledzÄ…ca kamera                   |
+| 3            | Kamera z perspektywy pociÄ…gu      |
+| 4            | Kamera swobodna                   |
+| F            | PrzeÅ‚Ä…cz widok siatki (Wireframe) |
+| B            | PrzeÅ‚Ä…cz Blinn-Phong              |
+| N            | PrzeÅ‚Ä…cz DzieÅ„/Noc                |
+| WASD         | Poruszanie kamerÄ…                 |
+| Space        | W gÃ³rÄ™                            |
+| Left Shift   | W dÃ³Å‚                             |
+| Left Control | Przechwycenie myszy               |
+| Scroll       | Zoom                              |
 
-Potok renderowania z teselacj¹ wygl¹da nastêpuj¹co:
+## Flaga na wietrze (pÅ‚at Beziera) (Tessellation Shader)
+DziÄ™ki zastosowaniu shaderÃ³w teselacji, moÅ¼liwe jest wygenerowanie dodatkowych wierzchoÅ‚kÃ³w, ktÃ³re pozwalajÄ… na zwiÄ™kszenie rozdzielczoÅ›ci powierzchni.
+
+Do teselacji potrzebne nam sÄ…:
+- [Control Shader](Assets/Shaders/tessControl.tcs) - kontroluje iloÅ›Ä‡ generowanych wierzchoÅ‚kÃ³w, parametr tessLevel okreÅ›la iloÅ›Ä‡ generowanych dodatkowych wierzchoÅ‚kÃ³w na krawÄ™dÅº
+- [Evaluation Shader](Assets/Shaders/tessEval.tes) - oblicza pozycje nowych wierzchoÅ‚kÃ³w i wylicza wartoÅ›ci powierzchni Beziera
+
+Potok renderowania z teselacjÄ… wyglÄ…da nastÄ™pujÄ…co:
 1. Vertex Shader
 2. Tessellation Control Shader
 3. Tessellation Evaluation Shader
 4. Fragment Shader
 
-W aplikacji u¿ytkownik mo¿e zmieniæ rozdzielczoœæ powierzchni Beziera w menu. Aby lepiej uwidoczniæ efekt, mo¿na w³¹czyæ tryb wyœwietlania siatki (klawisz `F`).
+W aplikacji uÅ¼ytkownik moÅ¼e zmieniÄ‡ rozdzielczoÅ›Ä‡ powierzchni Beziera w menu. Aby lepiej uwidoczniÄ‡ efekt, moÅ¼na wÅ‚Ä…czyÄ‡ tryb wyÅ›wietlania siatki (klawisz `F`).
 
-Aby w³¹czyæ teselacjê nale¿a³o wywo³aæ funkcjê 
+Aby wÅ‚Ä…czyÄ‡ teselacjÄ™ naleÅ¼aÅ‚o wywoÅ‚aÄ‡ funkcjÄ™ 
 ```glPatchParameteri(GL_PATCH_VERTICES, 16);```
-, dziêki czemu OpenGL wie, ¿e p³at wejœciowy bêdzie siê sk³adaæ z 16 wierzcho³ków.
+, dziÄ™ki czemu OpenGL wie, Å¼e pÅ‚at wejÅ›ciowy bÄ™dzie siÄ™ skÅ‚adaÄ‡ z 16 wierzchoÅ‚kÃ³w.
 
-Nastêpnie skoro mamy tylko jeden p³at, to wyœwietlenie jego mo¿na zrealizowaæ poprzez
+NastÄ™pnie skoro mamy tylko jeden pÅ‚at, to wyÅ›wietlenie jego moÅ¼na zrealizowaÄ‡ poprzez
 ```glDrawArrays(GL_PATCHES, 0, 16);```.
 
 
-## Zmiana sk³adowej zwierciadlanej Phong/Blinn
-We [fragment shaderze](Assets/Shaders/fragment.fs) u¿yta sk³adowa zwierciadlana (Phonga/Blinn) zale¿y od uniformu `blinn`.
-W aplikacji mo¿na zmieniaæ wartoœæ tej zmiennej, tym samym sk³adowej zwierciadlanej za pomoc¹ klawisza `B`.
-[ród³o](https://learnopengl.com/Advanced-Lighting/Advanced-Lighting)
+## Zmiana skÅ‚adowej zwierciadlanej Phong/Blinn
+We [fragment shaderze](Assets/Shaders/fragment.fs) uÅ¼yta skÅ‚adowa zwierciadlana (Phonga/Blinn) zaleÅ¼y od uniformu `blinn`.
+W aplikacji moÅ¼na zmieniaÄ‡ wartoÅ›Ä‡ tej zmiennej, tym samym skÅ‚adowej zwierciadlanej za pomocÄ… klawisza `B`.
+[Å¹rÃ³dÅ‚o](https://learnopengl.com/Advanced-Lighting/Advanced-Lighting)
 ```glsl
 float spec = 0.0;
 if (blinn)
